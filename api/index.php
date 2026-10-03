@@ -3,6 +3,127 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/config.php';
 
+
+function export_dashboard(string $format): never
+{
+    $pdo = db();
+    $total = (int)$pdo->query('SELECT COUNT(*) FROM tickets')->fetchColumn();
+    $status = [];
+    foreach (['Aberto', 'Em Atendimento', 'Concluído'] as $item) {
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM tickets WHERE status = ?');
+        $stmt->execute([$item]);
+        $status[$item] = (int)$stmt->fetchColumn();
+    }
+
+    $categories = $pdo->query(
+        'SELECT c.name, COUNT(t.id) AS total
+         FROM categories c LEFT JOIN tickets t ON t.category_id = c.id
+         GROUP BY c.id, c.name ORDER BY total DESC, c.name'
+    )->fetchAll();
+
+    $users = $pdo->query(
+        'SELECT u.name, COUNT(t.id) AS total,
+                COALESCE(SUM(CASE WHEN t.status = "Concluído" THEN 1 ELSE 0 END), 0) AS solved
+         FROM users u LEFT JOIN tickets t ON t.requester_id = u.id
+         GROUP BY u.id, u.name ORDER BY total DESC, u.name'
+    )->fetchAll();
+
+    if ($format === 'excel') {
+        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+        header('Content-Disposition: attachment; filename="conectadesk-dashboard.xls"');
+        echo '<html><head><meta charset="utf-8"><style>body{font-family:Arial;color:#18303f}h1{color:#123f5b}table{border-collapse:collapse;width:100%;margin-bottom:18px}th,td{border:1px solid #dfe8ed;padding:8px;text-align:left}th{background:#eaf4f8}</style></head><body>';
+        echo '<h1>ConectaDesk — Dashboard</h1>';
+        echo '<table><tr><th>Total</th><th>Abertos</th><th>Em atendimento</th><th>Concluídos</th></tr>';
+        echo '<tr><td>'.$total.'</td><td>'.$status['Aberto'].'</td><td>'.$status['Em Atendimento'].'</td><td>'.$status['Concluído'].'</td></tr></table>';
+        echo '<h2>Chamados por categoria</h2><table><tr><th>Categoria</th><th>Chamados</th></tr>';
+        foreach ($categories as $item) echo '<tr><td>'.htmlspecialchars((string)$item['name'], ENT_QUOTES, 'UTF-8').'</td><td>'.(int)$item['total'].'</td></tr>';
+        echo '</table><h2>Relação por usuário</h2><table><tr><th>Usuário</th><th>Chamados</th><th>Concluídos</th><th>Conclusão</th></tr>';
+        foreach ($users as $item) { $percent = (int)$item['total'] ? round((int)$item['solved'] / (int)$item['total'] * 100) : 0; echo '<tr><td>'.htmlspecialchars((string)$item['name'], ENT_QUOTES, 'UTF-8').'</td><td>'.(int)$item['total'].'</td><td>'.(int)$item['solved'].'</td><td>'.$percent.'%</td></tr>'; }
+        echo '</table></body></html>';
+        exit;
+    }
+
+    $lines = [
+        'ConectaDesk - Dashboard',
+        'Total: '.$total,
+        'Abertos: '.$status['Aberto'],
+        'Em atendimento: '.$status['Em Atendimento'],
+        'Concluídos: '.$status['Concluído'],
+        '',
+        'Chamados por categoria',
+    ];
+    foreach ($categories as $item) $lines[] = $item['name'].': '.$item['total'];
+    $lines[] = '';
+    $lines[] = 'Relação de chamados por usuário';
+    foreach ($users as $item) { $percent = (int)$item['total'] ? round((int)$item['solved'] / (int)$item['total'] * 100) : 0; $lines[] = $item['name'].': '.$item['total'].' chamados | '.$item['solved'].' concluídos | '.$percent.'%'; }
+    send_simple_pdf('ConectaDesk - Dashboard', $lines, 'conectadesk-dashboard.pdf');
+}
+
+function export_reports(string $format): never
+{
+    $pdo = db();
+    $tickets = $pdo->query('SELECT status, COUNT(*) AS total FROM tickets GROUP BY status ORDER BY FIELD(status, "Aberto", "Em Atendimento", "Concluído")')->fetchAll();
+    $ratings = $pdo->query('SELECT u.name, COUNT(r.id) AS evaluations, ROUND(COALESCE(AVG(r.rating), 0), 2) AS average_rating FROM users u LEFT JOIN ticket_ratings r ON r.user_id = u.id GROUP BY u.id, u.name ORDER BY u.name')->fetchAll();
+    $knowledge = $pdo->query('SELECT c.title, COALESCE(SUM(cr.opened),0) AS opens, COALESCE(SUM(cr.liked),0) AS likes, (SELECT COUNT(*) FROM content_comments cc WHERE cc.content_id=c.id) AS comments FROM contents c LEFT JOIN content_recipients cr ON cr.content_id=c.id WHERE c.type="material" GROUP BY c.id,c.title ORDER BY c.created_at DESC')->fetchAll();
+
+    if ($format === 'excel') {
+        header('Content-Type: application/vnd.ms-excel; charset=utf-8');
+        header('Content-Disposition: attachment; filename="conectadesk-relatorios.xls"');
+        echo '<html><head><meta charset="utf-8"><style>body{font-family:Arial;color:#18303f}h1{color:#123f5b}table{border-collapse:collapse;width:100%;margin-bottom:18px}th,td{border:1px solid #dfe8ed;padding:8px;text-align:left}th{background:#eaf4f8}</style></head><body><h1>ConectaDesk — Relatórios</h1>';
+        echo '<h2>Resultado por status</h2><table><tr><th>Status</th><th>Total</th></tr>'; foreach($tickets as $i) echo '<tr><td>'.htmlspecialchars($i['status'],ENT_QUOTES,'UTF-8').'</td><td>'.(int)$i['total'].'</td></tr>'; echo '</table>';
+        echo '<h2>Avaliações</h2><table><tr><th>Usuário</th><th>Avaliações</th><th>Média</th></tr>'; foreach($ratings as $i) echo '<tr><td>'.htmlspecialchars($i['name'],ENT_QUOTES,'UTF-8').'</td><td>'.(int)$i['evaluations'].'</td><td>'.$i['average_rating'].'</td></tr>'; echo '</table>';
+        echo '<h2>Base de Conhecimento</h2><table><tr><th>Material</th><th>Aberturas</th><th>Curtidas</th><th>Comentários</th></tr>'; foreach($knowledge as $i) echo '<tr><td>'.htmlspecialchars($i['title'],ENT_QUOTES,'UTF-8').'</td><td>'.(int)$i['opens'].'</td><td>'.(int)$i['likes'].'</td><td>'.(int)$i['comments'].'</td></tr>'; echo '</table></body></html>'; exit;
+    }
+
+    $lines = ['ConectaDesk - Relatórios', '', 'Resultado por status'];
+    foreach ($tickets as $i) $lines[] = $i['status'].': '.$i['total'];
+    $lines[] = ''; $lines[] = 'Avaliações';
+    foreach ($ratings as $i) $lines[] = $i['name'].': '.$i['evaluations'].' avaliações | média '.$i['average_rating'];
+    $lines[] = ''; $lines[] = 'Base de Conhecimento';
+    foreach ($knowledge as $i) $lines[] = $i['title'].': '.$i['opens'].' aberturas | '.$i['likes'].' curtidas | '.$i['comments'].' comentários';
+    send_simple_pdf('ConectaDesk - Relatórios', $lines, 'conectadesk-relatorios.pdf');
+}
+
+function send_simple_pdf(string $title, array $lines, string $filename): never
+{
+    $safe = static function (string $value): string {
+        $value = iconv('UTF-8', 'Windows-1252//TRANSLIT', $value) ?: $value;
+        return str_replace(['\\', '(', ')', "\r", "\n"], ['\\\\', '\\(', '\\)', '', ' '], $value);
+    };
+
+    $content = "BT\n/F1 18 Tf\n50 800 Td\n";
+    $content .= '(' . $safe($title) . ") Tj\n/F1 10 Tf\n0 -24 Td\n";
+    foreach ($lines as $line) {
+        $content .= '(' . $safe((string)$line) . ") Tj\n0 -16 Td\n";
+        if (strlen($content) > 50000) break;
+    }
+    $content .= 'ET';
+
+    $objects = [];
+    $objects[] = '<< /Type /Catalog /Pages 2 0 R >>';
+    $objects[] = '<< /Type /Pages /Kids [3 0 R] /Count 1 >>';
+    $objects[] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>';
+    $objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
+    $objects[] = '<< /Length '.strlen($content).' >>\nstream\n'.$content.'\nendstream';
+
+    $pdf = "%PDF-1.4\n";
+    $offsets = [0];
+    foreach ($objects as $index => $object) {
+        $offsets[$index + 1] = strlen($pdf);
+        $pdf .= ($index + 1) . " 0 obj\n" . $object . "\nendobj\n";
+    }
+    $xref = strlen($pdf);
+    $pdf .= "xref\n0 ".(count($objects)+1)."\n0000000000 65535 f \n";
+    for ($i = 1; $i <= count($objects); $i++) $pdf .= sprintf("%010d 00000 n \n", $offsets[$i]);
+    $pdf .= "trailer\n<< /Size ".(count($objects)+1)." /Root 1 0 R >>\nstartxref\n".$xref."\n%%EOF";
+
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="'.$filename.'"');
+    header('Content-Length: '.strlen($pdf));
+    echo $pdf;
+    exit;
+}
+
 header('Cache-Control: no-store');
 
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';

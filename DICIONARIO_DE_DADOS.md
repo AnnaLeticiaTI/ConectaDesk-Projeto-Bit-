@@ -9,35 +9,36 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 - `id` — INT UNSIGNED, PK — identificador do usuário
 - `name` — VARCHAR(120) — nome
 - `username` — VARCHAR(80), UNIQUE — usuário de login
-- `password_hash` — VARCHAR(255) — senha em hash
+- `password_hash` — VARCHAR(255) — senha armazenada em hash
 - `email` — VARCHAR(180), UNIQUE — e-mail principal
 - `secondary_email` — VARCHAR(180) — e-mail secundário
 - `phone` — VARCHAR(30) — telefone
 - `department` — VARCHAR(100) — departamento
 - `role` — ENUM('admin','user') — perfil de acesso
 - `is_super_admin` — TINYINT(1) — permissão para alterar perfis
-- `avatar_path` — VARCHAR(255) — foto de perfil
+- `avatar_path` — VARCHAR(255) — caminho da foto de perfil
 - `created_at` — DATETIME — data de cadastro
 
 ## categories
 
 - `id` — INT UNSIGNED, PK — identificador da categoria
 - `name` — VARCHAR(80), UNIQUE — nome da categoria
-- `severity` — TINYINT UNSIGNED — nível de seriedade
+- `severity` — TINYINT UNSIGNED — nível de severidade
 
 ## tickets
 
 - `id` — INT UNSIGNED, PK — identificador do chamado
 - `code` — VARCHAR(20), UNIQUE — código do chamado
 - `title` — VARCHAR(180) — título
-- `description` — TEXT — descrição
+- `description` — TEXT — descrição da solicitação
 - `category_id` — INT UNSIGNED, FK — categoria do chamado
 - `requester_id` — INT UNSIGNED, FK — usuário que abriu o chamado
-- `status` — ENUM('Aberto','Em Atendimento','Concluído') — status atual
+- `status` — ENUM('Aberto','Em Atendimento','Concluído') — situação do chamado
 - `created_at` — DATETIME — data de abertura
 - `updated_at` — DATETIME — data da última alteração
 
-`category_id` referencia `categories.id` e `requester_id` referencia `users.id`.
+`category_id` referencia `categories.id`.
+`requester_id` referencia `users.id`.
 
 ## ticket_attachments
 
@@ -54,7 +55,7 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 - `id` — INT UNSIGNED, PK — identificador do comentário
 - `ticket_id` — INT UNSIGNED, FK — chamado relacionado
 - `user_id` — INT UNSIGNED, FK — usuário que comentou
-- `body` — TEXT — comentário
+- `body` — TEXT — conteúdo do comentário
 - `created_at` — DATETIME — data do comentário
 
 ## ticket_ratings
@@ -63,7 +64,7 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 - `ticket_id` — INT UNSIGNED, UNIQUE/FK — chamado avaliado
 - `user_id` — INT UNSIGNED, FK — usuário que avaliou
 - `rating` — TINYINT UNSIGNED — nota de 1 a 5
-- `comment` — TEXT — comentário opcional
+- `comment` — TEXT — comentário opcional da avaliação
 - `created_at` — DATETIME — data da avaliação
 
 ## contents
@@ -81,13 +82,13 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 
 - `id` — INT UNSIGNED, PK — identificador do envio
 - `content_id` — INT UNSIGNED, FK — conteúdo enviado
-- `user_id` — INT UNSIGNED, FK — usuário que recebe
-- `start_date` — DATE — início do envio
-- `end_date` — DATE — fim do envio
-- `frequency` — ENUM('once','daily') — frequência
-- `opened` — TINYINT(1) — indica se foi aberto
+- `user_id` — INT UNSIGNED, FK — usuário destinatário
+- `start_date` — DATE — início do período
+- `end_date` — DATE — fim do período
+- `frequency` — ENUM('once','daily') — frequência de envio
+- `opened` — TINYINT(1) — indica se o conteúdo foi aberto
 - `read_at` — DATETIME — data da leitura
-- `liked` — TINYINT(1) — indica se foi curtido
+- `liked` — TINYINT(1) — indica se o conteúdo foi curtido
 - `created_at` — DATETIME — data do envio
 
 Existe uma chave única para `content_id`, `user_id` e `start_date`.
@@ -95,9 +96,9 @@ Existe uma chave única para `content_id`, `user_id` e `start_date`.
 ## content_comments
 
 - `id` — INT UNSIGNED, PK — identificador do comentário
-- `content_id` — INT UNSIGNED, FK — conteúdo relacionado
+- `content_id` — INT UNSIGNED, FK — conteúdo comentado
 - `user_id` — INT UNSIGNED, FK — usuário que comentou
-- `body` — TEXT — comentário
+- `body` — TEXT — conteúdo do comentário
 - `created_at` — DATETIME — data do comentário
 
 ## notifications
@@ -110,4 +111,4 @@ Existe uma chave única para `content_id`, `user_id` e `start_date`.
 - `read_at` — DATETIME — data da leitura
 - `created_at` — DATETIME — data da notificação
 
-As relações e chaves estrangeiras estão no `database/schema.sql`.
+As relações e chaves estrangeiras estão definidas no `database/schema.sql`.

@@ -418,7 +418,7 @@ a {
 }
 .grid {
     display: grid;
-    gap: 18px;
+    gap: 24px;
 }
 .cards {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1587,4 +1587,106 @@ body.dark .login-card input {
     .learning-copy h3 {
         font-size: 31px;
     }
+}
+
+/* ajustes de alinhamento */
+.cards {
+    gap: 22px;
+}
+.dashboard-main-charts,
+.report-grid {
+    gap: 22px;
+}
+.dashboard-kpis {
+    margin-bottom: 22px;
+}
+.card,
+.metric-card {
+    min-width: 0;
+}
+.filter-panel {
+    padding: 20px;
+}
+.toolbar {
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.toolbar > input[type="date"] {
+    width: 145px;
+    min-width: 145px;
+}
+.toolbar > button {
+    margin-left: 0;
+}
+.report-kpis {
+    margin-bottom: 22px;
+}
+.profile-modal-avatar {
+    width: 82px;
+    height: 68px;
+    border-radius: 22px;
+}
+.top-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+}
+.user-chip svg {
+    display: none;
+}
+@media (max-width: 900px) {
+    .cards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .dashboard-main-charts,
+    .report-grid {
+        grid-template-columns: 1fr;
+    }
+    .toolbar > button {
+        margin-left: 0;
+    }
+}
+@media (max-width: 620px) {
+    .cards {
+        grid-template-columns: 1fr;
+    }
+    .toolbar > select,
+    .toolbar > input[type="date"],
+    .filter-input,
+    .toolbar > button {
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+/* comentarios */
+.comments {
+    display: grid;
+    gap: 12px;
+}
+.comment {
+    padding: 15px 16px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--card);
+}
+.comment-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+.comment-head div {
+    display: grid;
+    gap: 3px;
+}
+.comment-head small,
+.comment-head time {
+    color: var(--muted);
+    font-size: 11px;
+}
+.comment p {
+    margin: 10px 0 0;
+    line-height: 1.55;
 }

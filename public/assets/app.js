@@ -11,11 +11,11 @@ const state = {
 const navItems = [
     ['home', 'Início', 'home'],
     ['tickets', 'Chamados', 'ticket'],
-    ['mine', 'Meus Chamados', 'check'],
+    ['mine', 'Meus Chamados', 'headset'],
     ['dashboard', 'Dashboard', 'chart'],
     ['knowledge', 'Base de Conhecimento', 'book'],
-    ['notices', 'Avisos', 'bell'],
-    ['content', 'Gerenciar Conteúdo', 'edit'],
+    ['notices', 'Avisos', 'announcement'],
+    ['content', 'Gerenciar Conteúdo', 'content'],
     ['reports', 'Relatórios', 'report'],
     ['settings', 'Configurações', 'settings'],
 ];
@@ -25,10 +25,12 @@ const $ = (selector) => document.querySelector(selector);
 const icons = {
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></svg>',
     ticket: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 7 2 2 3-3M5 13l2 2 3-3M5 19l2 2 3-3M13 8h7M13 14h7M13 20h7"/></svg>',
-    check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5a4 4 0 0 0-4 4v6a4 4 0 0 0 4 4M16 5a4 4 0 0 1 4 4v6a4 4 0 0 1-4 4M8 9h8M8 15h8"/></svg>',
+    headset: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13v-2a8 8 0 0 1 16 0v2"/><path d="M4 13h3v6H5a1 1 0 0 1-1-1zM20 13h-3v6h2a1 1 0 0 0 1-1z"/></svg>',
     chart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V5M4 20h16M8 16v-5M12 16V7M16 16V4M20 16v-3"/></svg>',
     book: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6a4 4 0 0 1 4 4v12H9a4 4 0 0 0-4 4zM19 4h-4v16h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg>',
-    bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 8 16-5-1 10-15 5zM4 8l4 5"/></svg>',
+    bell: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 17H6l1.5-2v-4a4.5 4.5 0 0 1 9 0v4z"/><path d="M10 20h4"/></svg>',
+    announcement: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 9 16-5-1 11-15 5zM4 9l5 5M9 14l2 5"/></svg>',
+    content: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6a4 4 0 0 1 4 4v12H9a4 4 0 0 0-4 4zM19 4h-4v16h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg>',
     edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14h16M7 8h6M7 12h5M7 16h8"/><path d="m15 9 3-3 2 2-3 3z"/></svg>',
     report: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h4M9 17v-4M12 17v-7M15 17v-2"/></svg>',
     settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M4 12H2m20 0h-2M12 4V2m0 20v-2M5 5 3.6 3.6m16.8 16.8L19 19M19 5l1.4-1.4M3.6 20.4 5 19"/></svg>',
@@ -121,32 +123,46 @@ function showLogin() {
 function showApp() {
     $('#loginView').classList.add('hidden');
     $('#app').classList.remove('hidden');
-    $('#notifIcon').innerHTML = icon('bell');
-    renderNavigation();
     updateUserChrome();
+    $('#notifIcon').innerHTML = icon('announcement');
+    renderNavigation();
     go('home');
     refreshNotificationDot();
+    startRealtimeUpdates();
 }
 
 function updateUserChrome() {
     const user = state.user;
     $('#miniAvatar').innerHTML = avatar(user);
     $('#miniUser').textContent = user.name;
-    $('#profileTopBtn').innerHTML = `${avatar(user, 'top-avatar')}<span>${escapeHtml(user.name.split(' ')[0])}</span>${icon('user')}`;
+    $('#profileTopBtn').innerHTML = `${avatar(user, 'top-avatar')}<span>${escapeHtml(user.name.split(' ')[0])}</span>`;
 }
 
+// menu lateral
 function renderNavigation() {
-    const isAdmin = state.user.role === 'admin';
-    const visibleItems = navItems.filter(([page]) => isAdmin || !['dashboard', 'content', 'reports'].includes(page));
+    const isAdmin = state.user?.role === 'admin';
+    const visibleItems = navItems.filter((item) => {
+        const page = item[0];
+        return isAdmin || !['dashboard', 'content', 'reports'].includes(page);
+    });
 
-    $('#nav').innerHTML = visibleItems.map(([page, label, iconName]) => `
-        <button type="button" data-page="${page}" aria-label="${label}">
-            <span class="nav-icon">${icon(iconName)}</span>
-            <span>${label}</span>
-        </button>
-    `).join('');
+    const nav = $('#nav');
+    if (!nav) return;
 
-    document.querySelectorAll('#nav button').forEach((button) => {
+    nav.innerHTML = visibleItems.map((item) => {
+        const page = item[0];
+        const label = item[1];
+        const iconName = item[2];
+
+        return `
+            <button type="button" data-page="${page}" aria-label="${label}">
+                <span class="nav-icon">${icon(iconName)}</span>
+                <span>${label}</span>
+            </button>
+        `;
+    }).join('');
+
+    nav.querySelectorAll('button').forEach((button) => {
         button.addEventListener('click', () => go(button.dataset.page));
     });
 }
@@ -338,14 +354,14 @@ async function tickets() {
             <button class="primary" onclick="openTicketModal()">+ Novo chamado</button>
         </div>
         <div class="filter-panel card">
-            <div class="filter-heading"><div><b>Filtrar chamados</b><span>Use categoria, status, período ou texto livre.</span></div><button class="secondary" onclick="clearTicketFilters()">Limpar</button></div>
+            <div class="filter-heading"><div><b>Filtrar chamados</b><span>Use categoria, status, período ou texto livre.</span></div></div>
             <div class="toolbar">
                 <label class="filter-input">${icon('search')}<input id="search" placeholder="Título, código ou solicitante"></label>
                 <select id="statusF"><option value="">Todos os status</option><option>Aberto</option><option>Em Atendimento</option><option>Concluído</option></select>
                 <select id="catF"><option value="">Todas as categorias</option>${state.categories.map((category) => `<option value="${category.id}">${escapeHtml(category.name)}</option>`).join('')}</select>
-                <input id="fromF" type="date" aria-label="Data inicial">
-                <input id="toF" type="date" aria-label="Data final">
+                <input id="fromF" type="date" aria-label="A partir de" title="A partir de">
                 <button class="secondary" onclick="applyFilters()">Aplicar filtros</button>
+                <button class="secondary" onclick="clearTicketFilters()">Limpar</button>
             </div>
         </div>
         <div id="ticketTableArea">${ticketTable(state.tickets, true)}</div>`;
@@ -358,7 +374,6 @@ async function applyFilters() {
         status: $('#statusF').value,
         category_id: $('#catF').value,
         from: $('#fromF').value,
-        to: $('#toF').value,
     };
     Object.entries(fields).forEach(([key, value]) => { if (value) params.set(key, value); });
 
@@ -368,7 +383,7 @@ async function applyFilters() {
 }
 
 function clearTicketFilters() {
-    ['search', 'statusF', 'catF', 'fromF', 'toF'].forEach((id) => { if ($('#' + id)) $('#' + id).value = ''; });
+    ['search', 'statusF', 'catF', 'fromF'].forEach((id) => { if ($('#' + id)) $('#' + id).value = ''; });
     applyFilters();
 }
 
@@ -383,7 +398,7 @@ async function mine() {
             <div><span class="eyebrow">Pessoal</span><h3>Meus Chamados</h3><p>Acompanhe suas solicitações e adicione informações quando necessário.</p></div>
             <button class="primary" onclick="openTicketModal()">+ Novo chamado</button>
         </div>
-        ${ticketTable(items, false)}`;
+        <div id="ticketTableArea">${ticketTable(items, false)}</div>`;
 }
 
 function openTicketModal() {
@@ -458,9 +473,22 @@ async function updateTicket(id) {
             }),
         });
         await openTicket(id);
+        await refreshTicketList();
     } catch (exception) {
         alert(exception.message);
     }
+}
+
+async function refreshTicketList() {
+    if (!['tickets', 'mine'].includes(state.page)) return;
+    const data = await api('/api/tickets');
+    state.tickets = data.items;
+    const area = $('#ticketTableArea');
+    if (!area) return;
+    const items = state.page === 'mine'
+        ? data.items.filter((ticket) => Number(ticket.requester_id) === Number(state.user.id))
+        : data.items;
+    area.innerHTML = ticketTable(items, state.page === 'tickets');
 }
 
 async function rateTicket(id) {
@@ -526,7 +554,13 @@ async function readContent(id) {
     }
 
     $('#modalContent').innerHTML = `
-        <article class="content-reader"><span class="badge badge-work">Material de apoio</span><h2>${escapeHtml(content.title)}</h2><small class="muted">${escapeHtml(content.category || 'Geral')} · por ${escapeHtml(content.author)}</small><div class="reader-body">${escapeHtml(content.body).replace(/\n/g, '<br>')}</div><div class="reader-actions"><a class="secondary" href="/api/contents/${id}/pdf">${icon('download')} Baixar em PDF</a>${state.user.role === 'user' ? `<button class="secondary" onclick="likeContent(${id})">♡ Curtir</button>` : ''}</div>${state.user.role === 'user' ? `<h4>Comentários</h4><div class="comments">${content.comments?.map((comment) => `<div class="comment"><div class="comment-head"><b>${escapeHtml(comment.user_name)}</b><small>${formatDate(comment.created_at, true)}</small></div><p>${escapeHtml(comment.body)}</p></div>`).join('') || '<div class="empty">Nenhum comentário ainda.</div>'}</div><form id="contentComment"><textarea name="body" required placeholder="Escreva um comentário sobre este material..."></textarea><div class="actions"><button class="primary">Comentar</button></div></form>` : ''}</article>`;
+        <article class="content-reader"><span class="badge badge-work">Material de apoio</span><h2>${escapeHtml(content.title)}</h2><small class="muted">${escapeHtml(content.category || 'Geral')} · por ${escapeHtml(content.author)}</small><div class="reader-body">${escapeHtml(content.body).replace(/\n/g, '<br>')}</div><div class="reader-actions"><a class="secondary" href="/api/contents/${id}/pdf">${icon('download')} Baixar em PDF</a>${state.user.role === 'user' ? `<button class="secondary" onclick="likeContent(${id})">♡ Curtir</button>` : ''}</div>
+        <section class="content-comments">
+            <div class="section-title"><div><span class="eyebrow">Interações</span><h4>Comentários</h4></div></div>
+            <div class="comments">${content.comments?.map((comment) => `<article class="comment"><div class="comment-head"><div><b>${escapeHtml(comment.user_name)}</b><small>Comentário no material</small></div><time>${formatDate(comment.created_at, true)}</time></div><p>${escapeHtml(comment.body)}</p></article>`).join('') || '<div class="empty">Nenhum comentário ainda.</div>'}</div>
+            ${state.user.role === 'user' ? `<form id="contentComment"><textarea name="body" required placeholder="Escreva um comentário sobre este material..."></textarea><div class="actions"><button class="primary">Comentar</button></div></form>` : ''}
+        </section>
+        </article>`;
 
     openModal();
     if (!$('#contentComment')) return;
@@ -667,6 +701,26 @@ async function setRole(id, role) {
     }
 }
 
+// atualização em tempo real
+function startRealtimeUpdates() {
+    if (state.refreshTimer) {
+        clearInterval(state.refreshTimer);
+    }
+
+    state.refreshTimer = setInterval(async () => {
+        try {
+            if (state.page === 'dashboard') {
+                await dashboard();
+            } else if (state.page === 'tickets' || state.page === 'mine') {
+                await refreshTicketList();
+            } else {
+                await refreshNotificationDot();
+            }
+        } catch {
+        }
+    }, 5000);
+}
+
 function openRegister() {
     $('#modalContent').innerHTML = `
         <div class="modal-title"><span class="eyebrow">Acesso</span><h2>Criar conta</h2><p class="muted">O cadastro cria automaticamente um usuário comum.</p></div>
@@ -704,7 +758,7 @@ async function openNotifications() {
     $('#notificationList').innerHTML = data.items.length
         ? data.items.map((notification) => `
             <button class="notification-item ${notification.read_at ? 'read' : ''}" onclick="readNotification(${notification.id})">
-                <span class="notification-icon">${icon(notification.type === 'material' ? 'book' : notification.type === 'notice' ? 'bell' : 'ticket')}</span>
+                <span class="notification-icon">${icon(notification.type === 'material' ? 'book' : notification.type === 'notice' ? 'announcement' : 'ticket')}</span>
                 <span><b>${escapeHtml(notification.title)}</b><small>${escapeHtml(notification.body)}</small><time>${formatDate(notification.created_at, true)}</time></span>
             </button>`).join('')
         : '<div class="empty">Nenhuma notificação disponível.</div>';

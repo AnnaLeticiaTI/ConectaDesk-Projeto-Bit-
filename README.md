@@ -1,14 +1,14 @@
 # ConectaDesk
 
-Sistema de Service Desk para abertura e acompanhamento de chamados, materiais de apoio e controle do atendimento.
+O ConectaDesk é uma plataforma de Service Desk que centraliza solicitações, facilita o acompanhamento dos chamados e melhora a comunicação entre usuários e equipe. O sistema também identifica dificuldades recorrentes e oferece materiais para aumentar a autonomia dos usuários.
 
 ## Tecnologias
 
 PHP 8.3, MySQL 8.4, HTML, CSS, JavaScript, PDO e Docker.
 
-## Rodar o projeto
+## Execução
 
-É necessário ter o Docker Desktop instalado.
+Pré-requisito: Docker Desktop.
 
 Na pasta do projeto:
 
@@ -17,9 +17,7 @@ docker compose down -v
 docker compose up -d --build
 ```
 
-Depois acesse:
-
-`http://localhost:8000`
+Acesse `http://localhost:8000`.
 
 ## Acessos de teste
 
@@ -33,9 +31,9 @@ Senha: `Conecta@123`
 
 ## Banco
 
-O banco é criado pelo `database/schema.sql` e os dados de teste pelo `database/seed.php`.
+`database/schema.sql` cria o banco e as tabelas. `database/seed.php` insere os dados de demonstração.
 
-## Pastas principais
+## Pastas
 
 - `api/` — backend e endpoints
 - `public/` — frontend
@@ -43,4 +41,4 @@ O banco é criado pelo `database/schema.sql` e os dados de teste pelo `database/
 - `database/` — SQL e dados iniciais
 - `storage/` — arquivos enviados
 
-Mais detalhes técnicos estão no `MEMORIAL_TECNICO.md` e no `DICIONARIO_DE_DADOS.md`.
+Documentação complementar: `MEMORIAL_TECNICO.md` e `DICIONARIO_DE_DADOS.md`.
