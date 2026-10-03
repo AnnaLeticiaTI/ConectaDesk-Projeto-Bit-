@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ConectaDesk</title>
+    <link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+    <!-- Tela inicial: login -->
+    <div id="loginView" class="login-shell">
+        <div class="login-orb orb-one"></div>
+        <div class="login-orb orb-two"></div>
+        <div class="login-orb orb-three"></div>
+
+        <div class="login-card">
+            <div class="brand-mark">CD</div>
+            <h1>ConectaDesk</h1>
+            <p>Portal de Solicitações Internas</p>
+
+            <form id="loginForm" class="login-form">
+                <div class="login-field">
+                    <label for="loginUser">Usuário</label>
+                    <input id="loginUser" required autocomplete="username" placeholder="Digite seu usuário">
+                </div>
+                <div class="login-field">
+                    <label for="loginPass">Senha</label>
+                    <input id="loginPass" type="password" required autocomplete="current-password" placeholder="Digite sua senha">
+                </div>
+                <button class="primary login-submit" type="submit">Entrar</button>
+                <small class="demo-access">Demo: <b>admin</b> / <b>Conecta@123</b></small>
+                <button type="button" class="link-btn register-btn" onclick="openRegister()">Criar conta</button>
+                <div id="loginError" class="error" role="alert"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Estrutura principal depois do login -->
+    <div id="app" class="app hidden">
+        <aside class="sidebar">
+            <div class="brand">
+                <span>CD</span>
+                <div>
+                    <b>ConectaDesk</b>
+                    <small>Service Desk</small>
+                </div>
+            </div>
+
+            
+            <nav id="nav" aria-label="Navegação principal"></nav>
+
+            <div class="sidebar-foot">
+                <div class="sidebar-user-line">
+                    <div id="miniAvatar" class="mini-avatar"></div>
+                    <div id="miniUser" class="mini-user"></div>
+                    <button id="logoutBtn" class="logout-inline">Sair</button>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <header class="topbar">
+                <div>
+                    <span class="eyebrow">Portal interno</span>
+                    <h2 id="pageTitle">Início</h2>
+                </div>
+                <div class="top-actions">
+                    <button id="profileTopBtn" class="user-chip" type="button" aria-label="Abrir meu perfil"></button>
+                    <button id="notifBtn" class="icon-btn notification-button" type="button" aria-label="Abrir notificações">
+                        <span id="notifIcon"></span>
+                        <i id="notifDot" class="notif-dot hidden"></i>
+                    </button>
+                </div>
+            </header>
+
+            <section id="content" class="content"></section>
+        </main>
+    </div>
+
+    <!-- Gaveta lateral de notificações -->
+    <aside id="notificationDrawer" class="notification-drawer hidden" aria-label="Central de notificações">
+        <div class="drawer-head">
+            <div>
+                <span class="eyebrow">Central</span>
+                <h3>Notificações</h3>
+            </div>
+            <button class="modal-close" type="button" onclick="closeNotifications()">×</button>
+        </div>
+        <p class="drawer-description">Acompanhe movimentações dos seus chamados, materiais e avisos.</p>
+        <div id="notificationList"></div>
+    </aside>
+    <div id="drawerOverlay" class="drawer-overlay hidden" onclick="closeNotifications()"></div>
+
+    <div id="modal" class="modal hidden" role="dialog" aria-modal="true">
+        <div class="modal-box">
+            <button class="modal-close" type="button" onclick="closeModal()">×</button>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script src="assets/app.js"></script>
+</body>
+</html>
