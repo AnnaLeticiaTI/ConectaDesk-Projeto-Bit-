@@ -14,7 +14,7 @@ const navItems = [
     ['mine', 'Meus Chamados', 'headset'],
     ['dashboard', 'Dashboard', 'chart'],
     ['knowledge', 'Base de Conhecimento', 'book'],
-    ['notices', 'Avisos', 'announcement'],
+    ['notices', 'Avisos', 'bell'],
     ['content', 'Gerenciar Conteúdo', 'content'],
     ['reports', 'Relatórios', 'report'],
     ['settings', 'Configurações', 'settings'],
@@ -33,10 +33,11 @@ const icons = {
     content: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h6a4 4 0 0 1 4 4v12H9a4 4 0 0 0-4 4zM19 4h-4v16h4a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2Z"/></svg>',
     edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5v14h16M7 8h6M7 12h5M7 16h8"/><path d="m15 9 3-3 2 2-3 3z"/></svg>',
     report: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v5h4M9 17v-4M12 17v-7M15 17v-2"/></svg>',
-    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Z"/><path d="M4 12H2m20 0h-2M12 4V2m0 20v-2M5 5 3.6 3.6m16.8 16.8L19 19M19 5l1.4-1.4M3.6 20.4 5 19"/></svg>',
+    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.4 3.5h5.2l.6 2a6.9 6.9 0 0 1 1.7 1l2-.7 2.6 4.5-1.5 1.4a7.2 7.2 0 0 1 0 2.1l1.5 1.4-2.6 4.5-2-.7a6.9 6.9 0 0 1-1.7 1l-.6 2H9.4l-.6-2a6.9 6.9 0 0 1-1.7-1l-2 .7-2.6-4.5L4 13.8a7.2 7.2 0 0 1 0-2.1L2.5 10.3 5.1 5.8l2 .7a6.9 6.9 0 0 1 1.7-1z"/><circle cx="12" cy="12" r="3"/></svg>',
     user: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>',
     search: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>',
     arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M9 7l1-3h4l1 3M6 7l1 14h10l1-14"/></svg>',
     download: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M8 11l4 4 4-4M5 20h14"/></svg>',
 };
 
@@ -124,7 +125,7 @@ function showApp() {
     $('#loginView').classList.add('hidden');
     $('#app').classList.remove('hidden');
     updateUserChrome();
-    $('#notifIcon').innerHTML = icon('announcement');
+    $('#notifIcon').innerHTML = icon('bell');
     renderNavigation();
     go('home');
     refreshNotificationDot();
@@ -441,6 +442,7 @@ async function openTicket(id) {
             <div class="ticket-detail-head"><div><span class="eyebrow">${escapeHtml(ticket.code)}</span><h2>${escapeHtml(ticket.title)}</h2></div>${statusBadge(ticket.status)}</div>
             <div class="detail-meta"><span>${escapeHtml(ticket.category)}</span><span>Solicitante: ${escapeHtml(ticket.requester)}</span><span>Aberto em ${formatDate(ticket.created_at, true)}</span></div>
             <div class="detail-description">${escapeHtml(ticket.description).replace(/\n/g, '<br>')}</div>
+            ${Number(ticket.requester_id) === Number(state.user.id) && ticket.status === 'Aberto' ? `<div class="actions"><button class="secondary" type="button" onclick="editTicket(${id})">Editar chamado</button><button class="secondary" type="button" onclick="deleteTicket(${id})">Excluir chamado</button></div>` : ''}
             ${ticket.attachments?.length ? `<div class="attachments"><h4>Fotos anexadas</h4>${ticket.attachments.map((attachment) => `<a href="/${escapeHtml(attachment.file_path)}" target="_blank"><img src="/${escapeHtml(attachment.file_path)}" alt="${escapeHtml(attachment.original_name)}"><span>${escapeHtml(attachment.user_name)}</span></a>`).join('')}</div>` : ''}
             <div class="detail-section"><div class="section-title"><h4>Interações</h4><span class="muted">Histórico do atendimento</span></div><div class="comments">${ticket.comments?.map((comment) => `<div class="comment"><div class="comment-head"><b>${escapeHtml(comment.user_name)}</b><small>${formatDate(comment.created_at, true)}</small></div><p>${escapeHtml(comment.body)}</p></div>`).join('') || '<div class="empty">Nenhuma interação registrada.</div>'}</div></div>
             ${canComment ? `<form id="commentForm" class="comment-form" enctype="multipart/form-data"><textarea name="body" placeholder="Adicionar uma nova informação..." required></textarea><input type="file" name="attachment" accept="image/png,image/jpeg,image/webp"><button class="secondary">Adicionar informação</button></form>` : ''}
@@ -460,6 +462,52 @@ async function openTicket(id) {
                 alert(exception.message);
             }
         };
+    }
+}
+
+async function editTicket(id) {
+    const ticket = await api(`/api/tickets/${id}`);
+    if (ticket.status !== 'Aberto' || Number(ticket.requester_id) !== Number(state.user.id)) return;
+
+    $('#modalContent').innerHTML = `
+        <div class="modal-title"><span class="eyebrow">Solicitação</span><h2>Editar chamado</h2><p>Altere os dados enquanto o chamado estiver aberto.</p></div>
+        <form id="editTicketForm">
+            <div class="form-grid">
+                <div class="field full"><label>Título<input name="title" required maxlength="180" value="${escapeHtml(ticket.title)}"></label></div>
+                <div class="field full"><label>Descrição<textarea name="description" required>${escapeHtml(ticket.description)}</textarea></label></div>
+                <div class="field"><label>Categoria<select name="category_id" required>${state.categories.map((category) => `<option value="${category.id}" ${Number(category.id) === Number(ticket.category_id) ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('')}</select></label></div>
+            </div>
+            <div id="editTicketError" class="error"></div>
+            <div class="actions"><button type="button" class="secondary" onclick="openTicket(${id})">Cancelar</button><button class="primary">Salvar alterações</button></div>
+        </form>`;
+
+    $('#editTicketForm').onsubmit = async (event) => {
+        event.preventDefault();
+        const form = new FormData(event.target);
+        try {
+            await api(`/api/tickets/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    title: form.get('title'),
+                    description: form.get('description'),
+                    category_id: Number(form.get('category_id')),
+                }),
+            });
+            await openTicket(id);
+        } catch (exception) {
+            $('#editTicketError').textContent = exception.message;
+        }
+    };
+}
+
+async function deleteTicket(id) {
+    if (!confirm('Excluir este chamado aberto?')) return;
+    try {
+        await api(`/api/tickets/${id}`, { method: 'DELETE' });
+        closeModal();
+        go('mine');
+    } catch (exception) {
+        alert(exception.message);
     }
 }
 
@@ -514,7 +562,7 @@ async function dashboard() {
     $('#content').innerHTML = `
         <div class="page-intro">
             <div><span class="eyebrow">Dados</span><h3>Dashboard</h3><p>Uma visão analítica dos chamados, categorias, usuários e conhecimento.</p></div>
-            <div class="export-actions"><a class="secondary" href="/api/export/dashboard?format=pdf">${icon('download')} PDF</a><a class="secondary" href="/api/export/dashboard?format=excel">${icon('download')} Excel</a></div>
+            <div class="export-actions"><button class="secondary" type="button" onclick="exportDashboard('pdf')">${icon('download')} PDF</button><button class="secondary" type="button" onclick="exportDashboard('excel')">${icon('download')} Excel</button></div>
         </div>
         <section class="grid cards dashboard-kpis">
             ${metricCard('Total', data.total, 'Chamados registrados')}
@@ -599,9 +647,16 @@ async function notices() {
 async function content() {
     if (state.user.role !== 'admin') return home();
     await loadUsers();
+    const data = await api('/api/contents');
 
     $('#content').innerHTML = `
-        <div class="page-intro"><div><span class="eyebrow">Administração</span><h3>Gerenciar Conteúdo</h3><p>Crie materiais e avisos, selecione destinatários e defina quando o conteúdo ficará disponível.</p></div></div>
+        <div class="page-intro">
+            <div>
+                <span class="eyebrow">Administração</span>
+                <h3>Gerenciar Conteúdo</h3>
+                <p>Crie materiais e avisos e escolha os usuários que receberão cada publicação.</p>
+            </div>
+        </div>
         <div class="card">
             <form id="contentForm">
                 <div class="form-grid">
@@ -609,14 +664,33 @@ async function content() {
                     <div class="field"><label>Tipo<select name="type"><option value="material">Material de Apoio</option><option value="notice">Aviso</option></select></label></div>
                     <div class="field"><label>Categoria<input name="category" placeholder="Ex.: Rede, Segurança, Sistemas"></label></div>
                     <div class="field"><label>Frequência<select name="frequency"><option value="once">Uma vez</option><option value="daily">Diariamente</option></select></label></div>
-                    <div class="field"><label>Disponível até<input name="end_date" type="date"></label></div>
-                    <div class="field"><label>Destinatários<select name="user_ids" multiple size="6">${state.users.map((user) => `<option value="${user.id}">${escapeHtml(user.name)} · ${escapeHtml(user.department || 'Sem departamento')}</option>`).join('')}</select></label><small>Use Ctrl para selecionar mais de uma pessoa.</small></div>
+                    <div class="field full"><label>Destinatários<select name="user_ids" multiple size="6">${state.users.map((user) => `<option value="${user.id}">${escapeHtml(user.name)} · ${escapeHtml(user.department || 'Sem departamento')}</option>`).join('')}</select></label><small>Use Ctrl para selecionar mais de uma pessoa.</small></div>
                     <div class="field full"><label>Conteúdo<textarea name="body" required placeholder="Escreva manualmente o material ou aviso."></textarea></label></div>
                 </div>
                 <div id="contentError" class="error"></div>
-                <div class="actions"><button class="primary">Pré-visualizar e publicar</button></div>
+                <div class="actions"><button class="primary">Publicar</button></div>
             </form>
-        </div>`;
+        </div>
+
+        <section class="card content-management-card">
+            <div class="section-title">
+                <div><span class="eyebrow">Publicações</span><h3>Materiais e Avisos publicados</h3></div>
+            </div>
+            <div class="content-management-list">
+                ${data.items.map((item) => `
+                    <article class="content-management-row">
+                        <div>
+                            <span class="badge ${item.type === 'notice' ? 'badge-open' : 'badge-work'}">${item.type === 'notice' ? 'Aviso' : 'Material'}</span>
+                            <h4>${escapeHtml(item.title)}</h4>
+                            <small>${escapeHtml(item.category || 'Geral')} · ${formatDate(item.created_at)} · ${Number(item.recipient_count || 0)} destinatário(s)</small>
+                        </div>
+                        <div class="actions">
+                            <button class="secondary" type="button" onclick="openContentDelete(${item.id})">${icon('trash')} Excluir</button>
+                        </div>
+                    </article>
+                `).join('') || '<div class="empty">Nenhum conteúdo publicado.</div>'}
+            </div>
+        </section>`;
 
     $('#contentForm').onsubmit = async (event) => {
         event.preventDefault();
@@ -626,7 +700,6 @@ async function content() {
             type: form.type.value,
             category: form.category.value,
             frequency: form.frequency.value,
-            end_date: form.end_date.value,
             body: form.body.value,
             user_ids: [...form.user_ids.selectedOptions].map((option) => Number(option.value)),
         };
@@ -641,11 +714,58 @@ async function content() {
 
         try {
             await api('/api/contents', { method: 'POST', body: JSON.stringify(data) });
-            go(data.type === 'notice' ? 'notices' : 'knowledge');
+            await content();
         } catch (exception) {
             $('#contentError').textContent = exception.message;
         }
     };
+}
+
+async function openContentDelete(contentId) {
+    if (state.user.role !== 'admin') return;
+
+    const data = await api('/api/contents');
+    const item = data.items.find((contentItem) => Number(contentItem.id) === Number(contentId));
+    if (!item) return;
+
+    $('#modalContent').innerHTML = `
+        <div class="modal-title">
+            <span class="eyebrow">Administração</span>
+            <h2>Excluir conteúdo</h2>
+            <p class="muted">${escapeHtml(item.title)}</p>
+        </div>
+        <div class="field">
+            <label>Excluir para
+                <select id="deleteContentScope">
+                    <option value="all">Todos os usuários</option>
+                    ${state.users.map((user) => `<option value="${user.id}">${escapeHtml(user.name)}</option>`).join('')}
+                </select>
+            </label>
+        </div>
+        <div id="deleteContentError" class="error"></div>
+        <div class="actions">
+            <button class="secondary" type="button" onclick="closeModal()">Cancelar</button>
+            <button class="primary" type="button" onclick="deleteContent(${contentId})">${icon('trash')} Excluir</button>
+        </div>`;
+    openModal();
+}
+
+async function deleteContent(contentId) {
+    const scope = $('#deleteContentScope').value;
+    const body = scope === 'all'
+        ? { scope: 'all' }
+        : { scope: 'user', user_id: Number(scope) };
+
+    try {
+        await api(`/api/contents/${contentId}`, {
+            method: 'DELETE',
+            body: JSON.stringify(body),
+        });
+        closeModal();
+        await content();
+    } catch (exception) {
+        $('#deleteContentError').textContent = exception.message;
+    }
 }
 
 // relatórios
@@ -656,7 +776,7 @@ async function reports() {
     const average = totalEvaluations ? (data.ratings.reduce((sum, item) => sum + Number(item.average_rating) * Number(item.evaluations), 0) / totalEvaluations).toFixed(2) : '0.00';
 
     $('#content').innerHTML = `
-        <div class="page-intro"><div><span class="eyebrow">Análise</span><h3>Relatórios</h3><p>Resultados do atendimento e desempenho dos materiais de conhecimento.</p></div><div class="export-actions"><a class="secondary" href="/api/export/reports?format=pdf">${icon('download')} PDF</a><a class="secondary" href="/api/export/reports?format=excel">${icon('download')} Excel</a></div></div>
+        <div class="page-intro"><div><span class="eyebrow">Análise</span><h3>Relatórios</h3><p>Resultados do atendimento e desempenho dos materiais de conhecimento.</p></div><div class="export-actions"><button class="secondary" type="button" onclick="exportReports('pdf')">${icon('download')} PDF</button><button class="secondary" type="button" onclick="exportReports('excel')">${icon('download')} Excel</button></div></div>
         <section class="grid cards report-kpis">
             ${metricCard('Avaliações', totalEvaluations, 'Respostas registradas')}
             ${metricCard('Média geral', average, 'Nota dos atendimentos')}
@@ -667,7 +787,7 @@ async function reports() {
             <article class="card"><div class="section-title"><div><span class="eyebrow">Chamados</span><h3>Resultado por status</h3></div></div><div class="report-status-list">${data.tickets.map((item) => `<div><span>${statusBadge(item.status)}</span><strong>${item.total}</strong></div>`).join('')}</div></article>
             <article class="card"><div class="section-title"><div><span class="eyebrow">Satisfação</span><h3>Avaliações por usuário</h3></div></div><div class="table-wrap"><table class="table compact"><thead><tr><th>Usuário</th><th>Avaliações</th><th>Média</th></tr></thead><tbody>${data.ratings.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td>${item.evaluations}</td><td>${item.average_rating}</td></tr>`).join('')}</tbody></table></div></article>
         </section>
-        <article class="card"><div class="section-title"><div><span class="eyebrow">Conhecimento</span><h3>Resultados da Base de Conhecimento</h3></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Aberturas</th><th>Curtidas</th><th>Comentários</th></tr></thead><tbody>${data.knowledge.map((item) => `<tr><td><b>${escapeHtml(item.title)}</b></td><td>${item.opens}</td><td>${item.likes}</td><td>${item.comments}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nenhum material avaliado.</div></td></tr>'}</tbody></table></div></article>`;
+        <article class="card report-knowledge-card"><div class="section-title"><div><span class="eyebrow">Conhecimento</span><h3>Resultados da Base de Conhecimento</h3></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Aberturas</th><th>Curtidas</th><th>Comentários</th></tr></thead><tbody>${data.knowledge.map((item) => `<tr><td><b>${escapeHtml(item.title)}</b></td><td>${item.opens}</td><td>${item.likes}</td><td>${item.comments}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nenhum material avaliado.</div></td></tr>'}</tbody></table></div></article>`;
 }
 
 // configurações
@@ -701,90 +821,14 @@ async function setRole(id, role) {
     }
 }
 
-// atualização em tempo real
-function startRealtimeUpdates() {
-    if (state.refreshTimer) {
-        clearInterval(state.refreshTimer);
-    }
 
-    state.refreshTimer = setInterval(async () => {
-        try {
-            if (state.page === 'dashboard') {
-                await dashboard();
-            } else if (state.page === 'tickets' || state.page === 'mine') {
-                await refreshTicketList();
-            } else {
-                await refreshNotificationDot();
-            }
-        } catch {
-        }
-    }, 5000);
+// exportação
+function exportDashboard(format) {
+    window.location.href = `/api/export/dashboard?format=${encodeURIComponent(format)}`;
 }
 
-function openRegister() {
-    $('#modalContent').innerHTML = `
-        <div class="modal-title"><span class="eyebrow">Acesso</span><h2>Criar conta</h2><p class="muted">O cadastro cria automaticamente um usuário comum.</p></div>
-        <form id="registerForm">
-            <div class="form-grid">
-                <div class="field"><label>Nome<input name="name" required></label></div>
-                <div class="field"><label>Usuário<input name="username" required></label></div>
-                <div class="field"><label>E-mail empresarial<input name="email" type="email" required></label></div>
-                <div class="field"><label>E-mail secundário<input name="secondary_email" type="email"></label></div>
-                <div class="field"><label>Senha<input name="password" type="password" minlength="8" required></label></div>
-                <div class="field"><label>Telefone<input name="phone"></label></div>
-                <div class="field full"><label>Departamento<input name="department"></label></div>
-            </div>
-            <div id="registerError" class="error"></div>
-            <div class="actions"><button type="button" class="secondary" onclick="closeModal()">Cancelar</button><button class="primary">Cadastrar</button></div>
-        </form>`;
-    openModal();
-
-    $('#registerForm').onsubmit = async (event) => {
-        event.preventDefault();
-        $('#registerError').textContent = '';
-        try {
-            await api('/api/auth/register', { method: 'POST', body: JSON.stringify(Object.fromEntries(new FormData(event.target))) });
-            closeModal();
-            $('#loginError').textContent = 'Cadastro realizado. Agora faça login.';
-        } catch (exception) {
-            $('#registerError').textContent = exception.message;
-        }
-    };
-}
-
-// notificações
-async function openNotifications() {
-    const data = await api('/api/notifications');
-    $('#notificationList').innerHTML = data.items.length
-        ? data.items.map((notification) => `
-            <button class="notification-item ${notification.read_at ? 'read' : ''}" onclick="readNotification(${notification.id})">
-                <span class="notification-icon">${icon(notification.type === 'material' ? 'book' : notification.type === 'notice' ? 'announcement' : 'ticket')}</span>
-                <span><b>${escapeHtml(notification.title)}</b><small>${escapeHtml(notification.body)}</small><time>${formatDate(notification.created_at, true)}</time></span>
-            </button>`).join('')
-        : '<div class="empty">Nenhuma notificação disponível.</div>';
-
-    $('#notificationDrawer').classList.remove('hidden');
-    $('#drawerOverlay').classList.remove('hidden');
-}
-
-async function readNotification(id) {
-    await api(`/api/notifications/${id}/read`, { method: 'POST' });
-    await openNotifications();
-    refreshNotificationDot();
-}
-
-function closeNotifications() {
-    $('#notificationDrawer').classList.add('hidden');
-    $('#drawerOverlay').classList.add('hidden');
-}
-
-async function refreshNotificationDot() {
-    try {
-        const data = await api('/api/notifications');
-        $('#notifDot').classList.toggle('hidden', !data.items.some((item) => !item.read_at));
-    } catch {
-
-    }
+function exportReports(format) {
+    window.location.href = `/api/export/reports?format=${encodeURIComponent(format)}`;
 }
 
 function toggleTheme() {

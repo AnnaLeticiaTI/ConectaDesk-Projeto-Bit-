@@ -4,6 +4,22 @@ declare(strict_types=1);
 require_once __DIR__ . '/../config/config.php';
 
 $pdo = db();
+$pdo->exec("SET NAMES utf8mb4");
+
+$categoryNames = [
+    1 => 'Suporte',
+    2 => 'Manutenção',
+    3 => 'Requisição',
+    4 => 'Acesso e Permissões',
+    5 => 'Sistemas e Aplicações',
+    6 => 'Infraestrutura',
+    7 => 'Equipamentos',
+    8 => 'Rede e Conectividade',
+];
+$categoryUpdate = $pdo->prepare('UPDATE categories SET name = ? WHERE id = ?');
+foreach ($categoryNames as $categoryId => $categoryName) {
+    $categoryUpdate->execute([$categoryName, $categoryId]);
+}
 
 // dados iniciais
 

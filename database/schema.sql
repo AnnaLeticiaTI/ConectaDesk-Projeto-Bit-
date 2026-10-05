@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS conectadesk CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE conectadesk;
 
@@ -94,13 +96,13 @@ CREATE TABLE IF NOT EXISTS content_recipients (
  content_id INT UNSIGNED NOT NULL,
  user_id INT UNSIGNED NOT NULL,
  start_date DATE NOT NULL,
- end_date DATE NULL,
  frequency ENUM('once','daily') NOT NULL DEFAULT 'once',
  opened TINYINT(1) NOT NULL DEFAULT 0,
  read_at DATETIME NULL,
  liked TINYINT(1) NOT NULL DEFAULT 0,
  created_at DATETIME NOT NULL,
  UNIQUE KEY uq_delivery(content_id,user_id,start_date),
+ KEY idx_content_recipient_user(content_id,user_id),
  FOREIGN KEY(content_id) REFERENCES contents(id) ON DELETE CASCADE,
  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;

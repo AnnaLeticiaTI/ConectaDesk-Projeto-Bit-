@@ -312,9 +312,11 @@ a {
     min-width: 0;
 }
 .mini-avatar {
-    width: 34px;
-    height: 34px;
-    flex: none;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    min-height: 30px;
+    flex: 0 0 30px;
 }
 .mini-user {
     min-width: 0;
@@ -386,9 +388,11 @@ a {
     background: #edf4f7;
 }
 .top-avatar {
-    width: 38px;
-    height: 38px;
-    font-size: 14px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 13px;
 }
 .icon-btn {
     width: 44px;
@@ -418,7 +422,7 @@ a {
 }
 .grid {
     display: grid;
-    gap: 24px;
+    gap: 36px;
 }
 .cards {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -705,7 +709,7 @@ a {
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: conic-gradient(#4aa878 0 var(--open), #5b99cc var(--open) var(--work), #e2a04a var(--work) 100%);
+    background: conic-gradient(#e2a04a 0 var(--open), #5b99cc var(--open) var(--work), #4aa878 var(--work) 100%);
 }
 .donut:after {
     content: "";
@@ -1132,7 +1136,7 @@ a {
 .knowledge-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 18px;
+    gap: 30px;
 }
 .knowledge-card {
     overflow: hidden;
@@ -1589,16 +1593,30 @@ body.dark .login-card input {
     }
 }
 
+
+.small-date-field input[type="date"] {
+    width: 170px;
+}
+.report-knowledge-card {
+    margin-top: 22px;
+}
+
 /* ajustes de alinhamento */
 .cards {
-    gap: 22px;
+    gap: 36px;
 }
 .dashboard-main-charts,
 .report-grid {
-    gap: 22px;
+    gap: 36px;
 }
 .dashboard-kpis {
     margin-bottom: 22px;
+}
+.dashboard-main-charts + .grid.two {
+    margin-top: 36px;
+}
+.dashboard-main-charts + .grid.two + .card {
+    margin-top: 36px;
 }
 .card,
 .metric-card {
@@ -1624,13 +1642,13 @@ body.dark .login-card input {
 }
 .profile-modal-avatar {
     width: 82px;
-    height: 68px;
-    border-radius: 22px;
+    height: 82px;
+    border-radius: 50%;
 }
 .top-avatar {
     width: 34px;
     height: 34px;
-    border-radius: 12px;
+    border-radius: 50%;
 }
 .user-chip svg {
     display: none;
@@ -1689,4 +1707,175 @@ body.dark .login-card input {
 .comment p {
     margin: 10px 0 0;
     line-height: 1.55;
+}
+
+
+/* gerenciamento de conteudo */
+.content-management-card {
+    margin-top: 24px;
+}
+.content-management-list {
+    display: grid;
+    gap: 12px;
+}
+.content-management-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 13px;
+    background: #fbfdfe;
+}
+.content-management-row h4 {
+    margin: 8px 0 5px;
+}
+.content-management-row small {
+    color: var(--muted);
+}
+.content-management-row .actions {
+    flex: none;
+}
+.profile-modal-avatar {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    overflow: hidden;
+}
+.profile-modal-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.report-grid {
+    gap: 30px;
+}
+.report-knowledge-card {
+    margin-top: 30px;
+}
+
+/* fotos de perfil */
+.avatar {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    flex: 0 0 30px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50% !important;
+    overflow: hidden;
+}
+.avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: 50% !important;
+}
+.mini-avatar {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    flex: 0 0 30px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50% !important;
+}
+.top-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    flex: 0 0 32px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50% !important;
+}
+.profile-modal-avatar {
+    width: 82px !important;
+    height: 82px !important;
+    min-width: 82px !important;
+    min-height: 82px !important;
+    flex: 0 0 82px;
+    aspect-ratio: 1 / 1;
+    border-radius: 50% !important;
+    overflow: hidden;
+}
+.profile-modal-avatar img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    border-radius: 50% !important;
+}
+.permission-person .avatar {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    flex: 0 0 30px;
+}
+
+/* espacamento do dashboard */
+.dashboard-kpis,
+.dashboard-main-charts,
+.dashboard-main-charts + .grid.two,
+.dashboard-main-charts + .grid.two + .card,
+.report-kpis,
+.report-grid,
+.report-knowledge-card {
+    margin-bottom: 30px;
+}
+.dashboard-main-charts,
+.dashboard-main-charts + .grid.two,
+.report-grid {
+    column-gap: 30px;
+    row-gap: 30px;
+}
+#content > .grid,
+#content > .card {
+    margin-bottom: 30px;
+}
+
+/* status do dashboard */
+.donut-status {
+    background: conic-gradient(#e2a04a 0 var(--open), #5b99cc var(--open) var(--work), #4aa878 var(--work) 100%);
+}
+
+/* avatar compacto */
+#miniAvatar,
+#miniAvatar .avatar {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    max-width: 30px !important;
+    max-height: 30px !important;
+    flex: 0 0 30px !important;
+    aspect-ratio: 1 / 1;
+    border-radius: 50% !important;
+}
+
+#profileTopBtn .top-avatar {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
+    min-height: 30px !important;
+    max-width: 30px !important;
+    max-height: 30px !important;
+    flex: 0 0 30px !important;
+}
+
+/* espacamento entre blocos */
+#content > .grid,
+#content > .card,
+#content > section {
+    margin-bottom: 30px;
+}
+#content > .grid + .grid,
+#content > .grid + .card,
+#content > .card + .grid,
+#content > .card + .card {
+    margin-top: 30px;
 }

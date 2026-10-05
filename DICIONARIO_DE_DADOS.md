@@ -84,7 +84,6 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 - `content_id` — INT UNSIGNED, FK — conteúdo enviado
 - `user_id` — INT UNSIGNED, FK — usuário destinatário
 - `start_date` — DATE — início do período
-- `end_date` — DATE — fim do período
 - `frequency` — ENUM('once','daily') — frequência de envio
 - `opened` — TINYINT(1) — indica se o conteúdo foi aberto
 - `read_at` — DATETIME — data da leitura
