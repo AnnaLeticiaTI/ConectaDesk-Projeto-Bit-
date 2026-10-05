@@ -23,6 +23,8 @@ Acesse `http://localhost:8000`.
 
 ## Acessos de teste
 
+Usuário: admin
+
 Senha: `Conecta@123`
 
 - `admin` — administrador
@@ -64,20 +66,3 @@ O projeto possui GitHub Actions em `.github/workflows/ci.yml`. A cada Pull Reque
 
 Quando um `push` na `main` passa por todos os testes, o pipeline publica automaticamente a imagem da aplicação no GitHub Container Registry (GHCR), com as tags `latest` e o SHA do commit.
 
-### GitHub Actions
-
-1. Suba o projeto para um repositório no GitHub.
-2. Mantenha a branch principal como `main`.
-3. Em cada Pull Request, o job `Testes automatizados` executa a validação.
-4. Ao fazer `push` na `main`, depois dos testes, o job `Publicar imagem Docker` envia a imagem para o GHCR.
-5. Em **Actions**, o workflow deve aparecer como `ConectaDesk CI/CD`.
-
-O pipeline usa somente o `GITHUB_TOKEN` fornecido pelo próprio GitHub para publicar a imagem; não é necessário criar uma senha adicional para o workflow.
-
-Para executar apenas a validação local antes de enviar ao GitHub:
-
-```powershell
-docker compose up -d --build
-docker compose exec app php tests/smoke_test.php
-docker compose down
-```

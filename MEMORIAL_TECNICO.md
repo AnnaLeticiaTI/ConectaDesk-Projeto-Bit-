@@ -46,10 +46,10 @@ Mantive uma estrutura simples para deixar o projeto funcional, organizado e fác
 
 ## Melhorias futuras
 
-Em uma próxima versão eu acrescentaria testes automatizados, envio de e-mail, paginação para bases maiores, proteção CSRF e armazenamento externo para arquivos. Se o sistema crescesse, também separaria a API em arquivos menores.
+Em uma próxima versão eu acrescentaria mais testes automatizados, envio de e-mail (como uma notificação de recebimento - Atualização de chamados, etc), paginação para bases maiores, proteção CSRF e armazenamento externo para arquivos. Se o sistema crescesse, também separaria a API em arquivos menores.
 ## Testes e integração contínua
 
-Foi incluído um conjunto de testes automatizados de fumaça para validar as principais rotas da aplicação, incluindo autenticação, dashboard, relatórios, chamados e exportações. O projeto também usa GitHub Actions para validar a sintaxe PHP, subir o ambiente Docker e executar os testes a cada alteração enviada ou Pull Request.
+Foi incluído um conjunto de testes automatizados para validar as principais rotas da aplicação, incluindo autenticação, dashboard, relatórios, chamados e exportações. O projeto também usa GitHub Actions para validar a sintaxe PHP, subir o ambiente Docker e executar os testes a cada alteração enviada ou Pull Request.
 
 Após uma alteração aprovada na branch `main`, o pipeline publica a imagem da aplicação no GitHub Container Registry. Essa etapa funciona como entrega contínua da imagem Docker, sem alterar a arquitetura da aplicação.
 
