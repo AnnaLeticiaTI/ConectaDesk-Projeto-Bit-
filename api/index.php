@@ -973,11 +973,23 @@ try {
 
         $ratings = $pdo->query(
             'SELECT u.name,
-                    COUNT(r.id) AS evaluations,
-                    ROUND(COALESCE(AVG(r.rating), 0), 2) AS average_rating
+                    COALESCE(r.evaluations, 0) AS evaluations,
+                    COALESCE(r.average_rating, 0) AS average_rating,
+                    COALESCE(l.material_likes, 0) AS material_likes
              FROM users u
-             LEFT JOIN ticket_ratings r ON r.user_id = u.id
-             GROUP BY u.id, u.name
+             LEFT JOIN (
+                 SELECT user_id, COUNT(*) AS evaluations, ROUND(AVG(rating), 2) AS average_rating
+                 FROM ticket_ratings
+                 GROUP BY user_id
+             ) r ON r.user_id = u.id
+             LEFT JOIN (
+                 SELECT cr.user_id, SUM(cr.liked) AS material_likes
+                 FROM content_recipients cr
+                 INNER JOIN contents c ON c.id = cr.content_id
+                 WHERE c.type = \'material\' AND cr.liked = 1
+                 GROUP BY cr.user_id
+             ) l ON l.user_id = u.id
+             WHERE u.role = \'user\'
              ORDER BY u.name'
         )->fetchAll();
 

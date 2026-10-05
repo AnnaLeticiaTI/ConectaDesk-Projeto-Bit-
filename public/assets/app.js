@@ -6,6 +6,7 @@ const state = {
     users: [],
     tickets: [],
     notificationTimer: null,
+    reportsTimer: null,
 };
 
 // menus do portal
@@ -77,30 +78,68 @@ function formatDate(value, withTime = false) {
 }
 
 // chamadas da API
+const apiCache = new Map();
+const apiPending = new Map();
+const GET_CACHE_TTL = 8000;
+
 async function api(url, options = {}) {
-    const headers = options.body instanceof FormData
-        ? { ...(options.headers || {}) }
-        : { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    const method = String(options.method || 'GET').toUpperCase();
+    const useCache = method === 'GET' && options.cache !== false;
+    const cacheKey = url;
 
-    let response;
+    if (useCache) {
+        const cached = apiCache.get(cacheKey);
+        if (cached && (Date.now() - cached.time) < GET_CACHE_TTL) {
+            return cached.data;
+        }
+        if (apiPending.has(cacheKey)) {
+            return apiPending.get(cacheKey);
+        }
+    }
+
+    const request = (async () => {
+        const headers = options.body instanceof FormData
+            ? { ...(options.headers || {}) }
+            : { 'Content-Type': 'application/json', ...(options.headers || {}) };
+
+        let response;
+        try {
+            response = await fetch(url, { ...options, headers });
+        } catch {
+            throw new Error('Não foi possível conectar ao ConectaDesk. Verifique se o servidor está em execução.');
+        }
+
+        let data = {};
+        try {
+            data = await response.json();
+        } catch {
+            data = {};
+        }
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Não foi possível concluir a operação.');
+        }
+
+        if (useCache) {
+            apiCache.set(cacheKey, { data, time: Date.now() });
+        } else if (method !== 'GET') {
+            apiCache.clear();
+        }
+
+        return data;
+    })();
+
+    if (useCache) {
+        apiPending.set(cacheKey, request);
+    }
+
     try {
-        response = await fetch(url, { ...options, headers });
-    } catch {
-        throw new Error('Não foi possível conectar ao ConectaDesk. Verifique se o servidor está em execução.');
+        return await request;
+    } finally {
+        if (useCache) {
+            apiPending.delete(cacheKey);
+        }
     }
-
-    let data = {};
-    try {
-        data = await response.json();
-    } catch {
-        data = {};
-    }
-
-    if (!response.ok) {
-        throw new Error(data.error || 'Não foi possível concluir a operação.');
-    }
-
-    return data;
 }
 
 // sessão
@@ -171,6 +210,11 @@ function renderNavigation() {
 }
 
 function go(page) {
+    if (state.reportsTimer && page !== 'reports') {
+        clearInterval(state.reportsTimer);
+        state.reportsTimer = null;
+    }
+
     state.page = page;
     document.querySelectorAll('#nav button').forEach((button) => {
         button.classList.toggle('active', button.dataset.page === page);
@@ -692,7 +736,7 @@ async function likeContent(id) {
 
 // notificacoes
 async function loadNotifications() {
-    const data = await api('/api/notifications');
+    const data = await api('/api/notifications', { cache: false });
     return data.items || [];
 }
 
@@ -891,14 +935,13 @@ async function deleteContent(contentId) {
 }
 
 // relatórios
-async function reports() {
-    if (state.user.role !== 'admin') return home();
-    const data = await api('/api/reports');
+function renderReports(data) {
     const totalEvaluations = data.ratings.reduce((sum, item) => sum + Number(item.evaluations), 0);
     const average = totalEvaluations ? (data.ratings.reduce((sum, item) => sum + Number(item.average_rating) * Number(item.evaluations), 0) / totalEvaluations).toFixed(2) : '0.00';
+    const updatedAt = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     $('#content').innerHTML = `
-        <div class="page-intro"><div><span class="eyebrow">Análise</span><h3>Relatórios</h3><p>Resultados do atendimento e desempenho dos materiais de conhecimento.</p></div><div class="export-actions"><button class="secondary" type="button" onclick="exportReports('pdf')">${icon('download')} PDF</button><button class="secondary" type="button" onclick="exportReports('excel')">${icon('download')} Excel</button></div></div>
+        <div class="page-intro"><div><span class="eyebrow">Análise</span><h3>Relatórios</h3><p>Resultados do atendimento e desempenho dos materiais de conhecimento.</p></div><div class="export-actions"><span class="report-live-status"><i></i> Atualização automática · ${updatedAt}</span><button class="secondary" type="button" onclick="exportReports('pdf')">${icon('download')} PDF</button><button class="secondary" type="button" onclick="exportReports('excel')">${icon('download')} Excel</button></div></div>
         <section class="grid cards report-kpis">
             ${metricCard('Avaliações', totalEvaluations, 'Respostas registradas')}
             ${metricCard('Média geral', average, 'Nota dos atendimentos')}
@@ -907,9 +950,34 @@ async function reports() {
         </section>
         <section class="grid two report-grid">
             <article class="card"><div class="section-title"><div><span class="eyebrow">Chamados</span><h3>Resultado por status</h3></div></div><div class="report-status-list">${data.tickets.map((item) => `<div><span>${statusBadge(item.status)}</span><strong>${item.total}</strong></div>`).join('')}</div></article>
-            <article class="card"><div class="section-title"><div><span class="eyebrow">Satisfação</span><h3>Avaliações por usuário</h3></div></div><div class="table-wrap"><table class="table compact"><thead><tr><th>Usuário</th><th>Avaliações</th><th>Média</th></tr></thead><tbody>${data.ratings.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td>${item.evaluations}</td><td>${item.average_rating}</td></tr>`).join('')}</tbody></table></div></article>
+            <article class="card"><div class="section-title"><div><span class="eyebrow">Satisfação</span><h3>Avaliações por usuário</h3></div></div><div class="table-wrap"><table class="table compact"><thead><tr><th>Usuário</th><th>Avaliações</th><th>Média</th><th>Curtidas em materiais</th></tr></thead><tbody>${data.ratings.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td>${item.evaluations}</td><td>${item.average_rating}</td><td><span class="report-like-status ${Number(item.material_likes) > 0 ? 'is-liked' : ''}">${Number(item.material_likes) > 0 ? `Sim · ${item.material_likes}` : 'Não'}</span></td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nenhum usuário disponível.</div></td></tr>'}</tbody></table></div></article>
         </section>
         <article class="card report-knowledge-card"><div class="section-title"><div><span class="eyebrow">Conhecimento</span><h3>Resultados da Base de Conhecimento</h3></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Aberturas</th><th>Curtidas</th><th>Comentários</th></tr></thead><tbody>${data.knowledge.map((item) => `<tr><td><b>${escapeHtml(item.title)}</b></td><td>${item.opens}</td><td>${item.likes}</td><td>${item.comments}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nenhum material avaliado.</div></td></tr>'}</tbody></table></div></article>`;
+}
+
+async function refreshReports() {
+    if (state.page !== 'reports' || state.user?.role !== 'admin') return;
+    try {
+        const data = await api('/api/reports', { cache: false });
+        renderReports(data);
+    } catch (exception) {
+        if (state.page === 'reports') {
+            console.warn('Não foi possível atualizar os relatórios:', exception.message);
+        }
+    }
+}
+
+async function reports() {
+    if (state.user.role !== 'admin') return home();
+
+    if (state.reportsTimer) {
+        clearInterval(state.reportsTimer);
+        state.reportsTimer = null;
+    }
+
+    const data = await api('/api/reports', { cache: false });
+    renderReports(data);
+    state.reportsTimer = window.setInterval(refreshReports, 10000);
 }
 
 // configurações
