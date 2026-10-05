@@ -57,8 +57,9 @@ function escapeHtml(value = '') {
 }
 
 function avatar(user, className = '') {
-    if (user?.avatar_path) {
-        return `<span class="avatar ${className}"><img src="/${escapeHtml(user.avatar_path)}" alt="Foto de ${escapeHtml(user.name || 'usuário')}"></span>`;
+    if (user?.avatar_path && user?.id) {
+        const version = encodeURIComponent(String(user.avatar_path).split('?v=')[1] || '1');
+        return `<span class="avatar ${className}"><img src="/api/users/${Number(user.id)}/avatar?v=${version}" alt="Foto de ${escapeHtml(user.name || 'usuário')}"></span>`;
     }
     const initial = (user?.name || '?').trim().charAt(0).toUpperCase();
     return `<span class="avatar ${className}">${escapeHtml(initial)}</span>`;
@@ -499,7 +500,7 @@ async function openTicket(id) {
             <div class="detail-meta"><span>${escapeHtml(ticket.category)}</span><span>Solicitante: ${escapeHtml(ticket.requester)}</span><span>Aberto em ${formatDate(ticket.created_at, true)}</span></div>
             <div class="detail-description">${escapeHtml(ticket.description).replace(/\n/g, '<br>')}</div>
             ${Number(ticket.requester_id) === Number(state.user.id) && ticket.status === 'Aberto' ? `<div class="actions"><button class="secondary" type="button" onclick="editTicket(${id})">Editar chamado</button><button class="secondary" type="button" onclick="deleteTicket(${id})">Excluir chamado</button></div>` : ''}
-            ${ticket.attachments?.length ? `<div class="attachments"><h4>Fotos anexadas</h4>${ticket.attachments.map((attachment) => `<a href="/${escapeHtml(attachment.file_path)}" target="_blank"><img src="/${escapeHtml(attachment.file_path)}" alt="${escapeHtml(attachment.original_name)}"><span>${escapeHtml(attachment.user_name)}</span></a>`).join('')}</div>` : ''}
+            ${ticket.attachments?.length ? `<div class="attachments"><h4>Fotos anexadas</h4>${ticket.attachments.map((attachment) => { const attachmentUrl = `/api/tickets/attachments/${Number(attachment.id)}`; return `<a href="${attachmentUrl}" target="_blank"><img src="${attachmentUrl}" alt="${escapeHtml(attachment.original_name)}"><span>${escapeHtml(attachment.user_name)}</span></a>`; }).join('')}</div>` : ''}
             <div class="detail-section"><div class="section-title"><h4>Interações</h4><span class="muted">Histórico do atendimento</span></div><div class="comments">${ticket.comments?.map((comment) => `<div class="comment"><div class="comment-head"><b>${escapeHtml(comment.user_name)}</b><small>${formatDate(comment.created_at, true)}</small></div><p>${escapeHtml(comment.body)}</p></div>`).join('') || '<div class="empty">Nenhuma interação registrada.</div>'}</div></div>
             ${canComment ? `<form id="commentForm" class="comment-form" enctype="multipart/form-data"><textarea name="body" placeholder="Adicionar uma nova informação..." required></textarea><input type="file" name="attachment" accept="image/png,image/jpeg,image/webp"><button class="secondary">Adicionar informação</button></form>` : ''}
             ${state.user.role === 'admin' ? `<div class="admin-ticket-actions"><label>Status<select id="ticketStatus"><option ${ticket.status === 'Aberto' ? 'selected' : ''}>Aberto</option><option ${ticket.status === 'Em Atendimento' ? 'selected' : ''}>Em Atendimento</option><option ${ticket.status === 'Concluído' ? 'selected' : ''}>Concluído</option></select></label><label>Categoria<select id="ticketCategory">${state.categories.map((category) => `<option value="${category.id}" ${Number(category.id) === Number(ticket.category_id) ? 'selected' : ''}>${escapeHtml(category.name)}</option>`).join('')}</select></label><button class="primary" onclick="updateTicket(${id})">Salvar atendimento</button></div>` : ''}

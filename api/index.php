@@ -122,6 +122,7 @@ try {
     // arquivos
     if (preg_match('#^/api/users/(\d+)/avatar$#', $path, $matches) && $method === 'GET') {
         $viewer = require_auth();
+        ensure_file_storage_columns(db());
         $userId = (int)$matches[1];
         if ($viewer['role'] !== 'admin' && (int)$viewer['id'] !== $userId) {
             json_response(['error' => 'Acesso restrito.'], 403);
@@ -153,6 +154,7 @@ try {
 
     if (preg_match('#^/api/tickets/attachments/(\d+)$#', $path, $matches) && $method === 'GET') {
         $viewer = require_auth();
+        ensure_file_storage_columns(db());
         $attachmentId = (int)$matches[1];
         $stmt = db()->prepare(
             'SELECT ta.file_path, ta.mime_type, t.requester_id, ta.user_id
@@ -279,6 +281,7 @@ try {
 
     if ($path === '/api/profile/avatar' && $method === 'POST') {
         $user = require_auth();
+        ensure_file_storage_columns(db());
         $file = upload_image($_FILES['avatar'] ?? []);
         if (!$file) {
             json_response(['error' => 'Selecione uma imagem.'], 422);
@@ -287,7 +290,7 @@ try {
         db()->prepare(
             'UPDATE users SET avatar_path = ?, avatar_data = ?, avatar_mime_type = ? WHERE id = ?'
         )->execute([
-            'api/users/avatar/' . (int)$user['id'],
+            'api/users/avatar/' . (int)$user['id'] . '?v=' . time(),
             $file['data'],
             $file['mime_type'],
             (int)$user['id'],
@@ -365,6 +368,7 @@ try {
             $pdo->prepare('UPDATE tickets SET code = ? WHERE id = ?')->execute([$code, $ticketId]);
 
             if (isset($_FILES['attachment'])) {
+                ensure_file_storage_columns($pdo);
                 $file = upload_image($_FILES['attachment']);
                 if ($file) {
                     $pdo->prepare(
@@ -391,6 +395,7 @@ try {
         require_auth();
         $ticketId = (int)$matches[1];
         $pdo = db();
+        ensure_file_storage_columns($pdo);
 
         $stmt = $pdo->prepare(
             'SELECT t.*, c.name AS category, c.severity, u.name AS requester, u.email AS requester_email
@@ -416,7 +421,7 @@ try {
         $ticket['comments'] = $stmt->fetchAll();
 
         $stmt = $pdo->prepare(
-            'SELECT ta.*, u.name AS user_name
+            'SELECT ta.id, ta.ticket_id, ta.user_id, ta.file_path, ta.original_name, ta.mime_type, ta.created_at, u.name AS user_name
              FROM ticket_attachments ta
              INNER JOIN users u ON u.id = ta.user_id
              WHERE ta.ticket_id = ? ORDER BY ta.created_at'
@@ -537,6 +542,7 @@ try {
         )->execute([$ticketId, (int)$user['id'], $body, now()]);
 
         if (isset($_FILES['attachment'])) {
+            ensure_file_storage_columns($pdo);
             $file = upload_image($_FILES['attachment']);
             if ($file) {
                 $pdo->prepare(
