@@ -72,14 +72,35 @@ function db(): PDO
     $password = envv('DB_PASSWORD', 'conectadesk');
 
     $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+    $sslMode = envv('DB_SSL_MODE');
+    $sslCa = envv('DB_SSL_CA');
+    $sslCaContent = envv('DB_SSL_CA_CONTENT');
 
+    if ($sslMode !== '') {
+        $dsn .= ";sslmode=" . strtolower($sslMode);
+    }
+
+    $options = [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        PDO::ATTR_EMULATE_PREPARES => false,
+    ];
+
+    if ($sslCaContent !== '') {
+        $sslCa = sys_get_temp_dir() . '/conectadesk-aiven-ca.pem';
+        if (!is_file($sslCa)) {
+            file_put_contents($sslCa, $sslCaContent, LOCK_EX);
+            chmod($sslCa, 0600);
+        }
+    }
+
+    if ($sslCa !== '') {
+        $options[PDO::MYSQL_ATTR_SSL_CA] = $sslCa;
+        $options[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT] = true;
+    }
 
     try {
-        $pdo = new PDO($dsn, $user, $password, [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]);
+        $pdo = new PDO($dsn, $user, $password, $options);
     } catch (Throwable $exception) {
         throw new RuntimeException('Não foi possível conectar ao banco de dados.', 0, $exception);
     }

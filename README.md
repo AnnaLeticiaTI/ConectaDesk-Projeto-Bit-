@@ -6,6 +6,8 @@ O ConectaDesk é uma plataforma de Service Desk que centraliza solicitações, f
 
 PHP 8.3, MySQL 8.4, HTML, CSS, JavaScript, PDO e Docker.
 
+Como recursos extras, o projeto utiliza SQL em banco externo e Vercel para hospedagem.
+
 ## Execução
 
 Pré-requisito: Docker Desktop.
@@ -79,4 +81,3 @@ docker compose up -d --build
 docker compose exec app php tests/smoke_test.php
 docker compose down
 ```
-
