@@ -13,7 +13,8 @@ $columns = [
 
 foreach ($columns as [$table, $column, $definition]) {
     $stmt = $pdo->prepare(
-        'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS\n         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
+        'SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?'
     );
     $stmt->execute([$table, $column]);
     if ((int)$stmt->fetchColumn() === 0) {
