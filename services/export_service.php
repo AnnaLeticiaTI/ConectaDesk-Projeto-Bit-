@@ -103,6 +103,8 @@ function reports_export_data(PDO $pdo): array
              ORDER BY u.name'
     )->fetchAll();
 
+    $ratings = array_values(array_filter($ratings, static fn(array $item): bool => (string)($item['name'] ?? '') !== 'Administrador Principal'));
+
     foreach ($ratings as &$item) {
         $liked = (int)$item['evaluations'];
         $received = (int)$item['materials_received'];

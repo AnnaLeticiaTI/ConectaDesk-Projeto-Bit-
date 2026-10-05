@@ -160,6 +160,10 @@ async function init() {
 function showLogin() {
     $('#loginView').classList.remove('hidden');
     $('#app').classList.add('hidden');
+    const registerButton = $('#registerBtn');
+    if (registerButton) {
+        registerButton.onclick = openRegister;
+    }
 }
 
 function showApp() {
@@ -1049,8 +1053,6 @@ $('#loginForm').onsubmit = async (event) => {
         $('#loginError').textContent = exception.message;
     }
 };
-
-$('#registerBtn').onclick = openRegister;
 
 $('#logoutBtn').onclick = async () => {
     await api('/api/auth/logout', { method: 'POST' });
