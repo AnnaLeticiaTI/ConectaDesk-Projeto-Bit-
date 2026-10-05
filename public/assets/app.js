@@ -189,6 +189,63 @@ function closeModal() {
     $('#modal').classList.add('hidden');
 }
 
+function openRegister() {
+    $('#modalContent').innerHTML = `
+        <div class="modal-title">
+            <span class="eyebrow">Acesso</span>
+            <h2>Criar conta</h2>
+            <p class="muted">Cadastre seus dados para acessar o ConectaDesk.</p>
+        </div>
+        <form id="registerForm" class="form-grid">
+            <div class="field full"><label>Nome completo<input name="name" required maxlength="120" autocomplete="name"></label></div>
+            <div class="field"><label>Usuário<input name="username" required maxlength="80" autocomplete="username"></label></div>
+            <div class="field"><label>E-mail<input name="email" type="email" required maxlength="180" autocomplete="email"></label></div>
+            <div class="field"><label>E-mail secundário<input name="secondary_email" type="email" maxlength="180"></label></div>
+            <div class="field"><label>Telefone<input name="phone" maxlength="30" autocomplete="tel"></label></div>
+            <div class="field full"><label>Departamento<input name="department" maxlength="100"></label></div>
+            <div class="field"><label>Senha<input name="password" type="password" required minlength="8" autocomplete="new-password"></label></div>
+            <div class="field"><label>Confirmar senha<input name="password_confirmation" type="password" required minlength="8" autocomplete="new-password"></label></div>
+            <div id="registerError" class="error full" role="alert"></div>
+            <div class="actions full">
+                <button class="secondary" type="button" onclick="closeModal()">Cancelar</button>
+                <button class="primary" type="submit">Criar conta</button>
+            </div>
+        </form>`;
+
+    openModal();
+    $('#registerForm').onsubmit = async (event) => {
+        event.preventDefault();
+        $('#registerError').textContent = '';
+        const form = event.target;
+
+        if (form.password.value !== form.password_confirmation.value) {
+            $('#registerError').textContent = 'As senhas não conferem.';
+            return;
+        }
+
+        try {
+            const response = await api('/api/auth/register', {
+                method: 'POST',
+                body: JSON.stringify({
+                    name: form.name.value.trim(),
+                    username: form.username.value.trim(),
+                    email: form.email.value.trim(),
+                    secondary_email: form.secondary_email.value.trim(),
+                    phone: form.phone.value.trim(),
+                    department: form.department.value.trim(),
+                    password: form.password.value,
+                }),
+            });
+
+            state.user = response.user;
+            closeModal();
+            showApp();
+        } catch (exception) {
+            $('#registerError').textContent = exception.message;
+        }
+    };
+}
+
 // perfil
 function openProfile() {
     const user = state.user;

@@ -28,7 +28,7 @@ O frontend conversa com a API e não acessa o banco diretamente.
 
 O banco foi separado em usuários, categorias, chamados, anexos, comentários, avaliações, conteúdos, destinatários e notificações. O `schema.sql` cria a estrutura e o `seed.php` insere os dados de demonstração.
 
-O login aceita usuário, e-mail ou e-mail secundário. As senhas usam `password_hash` e `password_verify`, e a sessão PHP controla o acesso. As operações administrativas são validadas no backend e as consultas usam parâmetros preparados.
+O login aceita usuário, e-mail ou e-mail secundário. As senhas usam `password_hash` e `password_verify`, e a autenticação utiliza tokens armazenados em hash na tabela `auth_sessions`, evitando dependência de sessão em arquivo no ambiente de deploy. As operações administrativas são validadas no backend e as consultas usam parâmetros preparados.
 
 ## Funcionalidades
 

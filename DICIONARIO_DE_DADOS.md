@@ -19,6 +19,16 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 - `avatar_path` — VARCHAR(255) — caminho da foto de perfil
 - `created_at` — DATETIME — data de cadastro
 
+## auth_sessions
+
+- `id` — BIGINT UNSIGNED, PK — identificador da sessão
+- `token_hash` — CHAR(64), UNIQUE — hash do token de autenticação
+- `user_id` — INT UNSIGNED, FK — usuário autenticado
+- `expires_at` — DATETIME — data e hora de expiração
+- `created_at` — DATETIME — data e hora de criação da sessão
+
+`user_id` referencia `users.id`.
+
 ## categories
 
 - `id` — INT UNSIGNED, PK — identificador da categoria

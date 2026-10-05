@@ -11,8 +11,6 @@ if (!is_dir(UPLOAD_DIR)) {
     mkdir(UPLOAD_DIR, 0775, true);
 }
 
-session_name('conectadesk_session');
-session_start();
 
 function load_env_file(): void
 {
@@ -101,6 +99,18 @@ function db(): PDO
 
     try {
         $pdo = new PDO($dsn, $user, $password, $options);
+        $pdo->exec(
+            'CREATE TABLE IF NOT EXISTS auth_sessions (
+                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                token_hash CHAR(64) NOT NULL UNIQUE,
+                user_id INT UNSIGNED NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at DATETIME NOT NULL,
+                INDEX idx_auth_sessions_user (user_id),
+                INDEX idx_auth_sessions_expires (expires_at),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            ) ENGINE=InnoDB'
+        );
     } catch (Throwable $exception) {
         throw new RuntimeException('Não foi possível conectar ao banco de dados.', 0, $exception);
     }
@@ -123,9 +133,79 @@ function request_json(): array
     return is_array($data) ? $data : [];
 }
 
+function auth_cookie_name(): string
+{
+    return 'conectadesk_auth';
+}
+
+function set_auth_cookie(string $token, int $expiresAt): void
+{
+    setcookie(auth_cookie_name(), $token, [
+        'expires' => $expiresAt,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || envv('VERCEL') === '1',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
+function create_auth_session(array $user): array
+{
+    $token = bin2hex(random_bytes(32));
+    $expiresAt = time() + (8 * 60 * 60);
+    $expiresAtDb = date('Y-m-d H:i:s', $expiresAt);
+
+    db()->prepare(
+        'INSERT INTO auth_sessions (token_hash, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)'
+    )->execute([
+        hash('sha256', $token),
+        (int)$user['id'],
+        $expiresAtDb,
+        now(),
+    ]);
+
+    set_auth_cookie($token, $expiresAt);
+    return public_user($user);
+}
+
+function clear_auth_session(): void
+{
+    $token = $_COOKIE[auth_cookie_name()] ?? '';
+    if ($token !== '') {
+        db()->prepare('DELETE FROM auth_sessions WHERE token_hash = ?')->execute([hash('sha256', $token)]);
+    }
+
+    setcookie(auth_cookie_name(), '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || envv('VERCEL') === '1',
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
+}
+
 function current_user(): ?array
 {
-    return $_SESSION['user'] ?? null;
+    $token = $_COOKIE[auth_cookie_name()] ?? '';
+    if ($token === '') {
+        return null;
+    }
+
+    $stmt = db()->prepare(
+        'SELECT u.*
+         FROM auth_sessions s
+         INNER JOIN users u ON u.id = s.user_id
+         WHERE s.token_hash = :token_hash AND s.expires_at > NOW()
+         LIMIT 1'
+    );
+    $stmt->execute(['token_hash' => hash('sha256', $token)]);
+    $user = $stmt->fetch();
+
+    if (!$user) {
+        return null;
+    }
+
+    return public_user($user);
 }
 
 function require_auth(): array

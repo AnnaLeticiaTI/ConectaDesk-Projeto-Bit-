@@ -37,9 +37,7 @@ try {
             json_response(['error' => 'Usuário ou senha inválidos.'], 401);
         }
 
-        session_regenerate_id(true);
-        $_SESSION['user'] = public_user($user);
-        json_response(['user' => $_SESSION['user']]);
+        json_response(['user' => create_auth_session($user)]);
     }
 
     if ($path === '/api/auth/register' && $method === 'POST') {
@@ -104,16 +102,16 @@ try {
             'created_at' => now(),
         ]);
 
-        json_response(['ok' => true], 201);
+        $userId = (int)db()->lastInsertId();
+        $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $newUser = $stmt->fetch();
+
+        json_response(['ok' => true, 'user' => create_auth_session($newUser)], 201);
     }
 
     if ($path === '/api/auth/logout' && $method === 'POST') {
-        $_SESSION = [];
-        if (ini_get('session.use_cookies')) {
-            $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000, $params['path'], $params['domain'], $params['secure'], $params['httponly']);
-        }
-        session_destroy();
+        clear_auth_session();
         json_response(['ok' => true]);
     }
 
@@ -205,9 +203,7 @@ try {
 
         $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
         $stmt->execute([(int)$user['id']]);
-        $_SESSION['user'] = public_user($stmt->fetch());
-
-        json_response(['user' => $_SESSION['user']]);
+        json_response(['user' => public_user($stmt->fetch())]);
     }
 
     if ($path === '/api/profile/avatar' && $method === 'POST') {
@@ -218,8 +214,9 @@ try {
         }
 
         db()->prepare('UPDATE users SET avatar_path = ? WHERE id = ?')->execute([$file['path'], (int)$user['id']]);
-        $_SESSION['user']['avatar_path'] = $file['path'];
-        json_response(['user' => $_SESSION['user']]);
+        $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
+        $stmt->execute([(int)$user['id']]);
+        json_response(['user' => public_user($stmt->fetch())]);
     }
 
     // chamados
