@@ -969,61 +969,7 @@ try {
     // relatórios
     if ($path === '/api/reports' && $method === 'GET') {
         require_admin();
-        $pdo = db();
-
-        $ratings = $pdo->query(
-            'SELECT u.name,
-                    COUNT(DISTINCT CASE
-                        WHEN c.type = \'material\' AND cr.liked = 1 THEN cr.content_id
-                    END) AS evaluations,
-                    COUNT(DISTINCT CASE
-                        WHEN c.type = \'material\' THEN cr.content_id
-                    END) AS materials_received
-             FROM users u
-             LEFT JOIN content_recipients cr ON cr.user_id = u.id
-             LEFT JOIN contents c ON c.id = cr.content_id
-             WHERE u.role = \'user\'
-             GROUP BY u.id, u.name
-             ORDER BY u.name'
-        )->fetchAll();
-
-        foreach ($ratings as &$item) {
-            $liked = (int)$item['evaluations'];
-            $received = (int)$item['materials_received'];
-            $item['average_rating'] = $received > 0 ? round(($liked / $received) * 100, 2) : 0;
-        }
-        unset($item);
-
-        $knowledge = $pdo->query(
-            'SELECT c.id, c.title,
-                    COALESCE(SUM(cr.opened), 0) AS opens,
-                    COALESCE(SUM(cr.liked), 0) AS likes,
-                    (SELECT COUNT(*) FROM content_comments cc WHERE cc.content_id = c.id) AS comments
-             FROM contents c
-             LEFT JOIN content_recipients cr ON cr.content_id = c.id
-             WHERE c.type = \'material\'
-             GROUP BY c.id, c.title
-             ORDER BY c.created_at DESC'
-        )->fetchAll();
-
-        $tickets = $pdo->query(
-            'SELECT status, COUNT(*) AS total
-             FROM tickets GROUP BY status ORDER BY FIELD(status, \'Aberto\', \'Em Atendimento\', \'Concluído\')'
-        )->fetchAll();
-
-        $categories = $pdo->query(
-            'SELECT c.name, COUNT(t.id) AS total
-             FROM categories c
-             LEFT JOIN tickets t ON t.category_id = c.id
-             GROUP BY c.id, c.name ORDER BY total DESC, c.name'
-        )->fetchAll();
-
-        json_response([
-            'ratings' => $ratings,
-            'knowledge' => $knowledge,
-            'tickets' => $tickets,
-            'categories' => $categories,
-        ]);
+        json_response(reports_data(db()));
     }
 
     if ($path === '/api/export/dashboard' && $method === 'GET') {

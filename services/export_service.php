@@ -85,22 +85,24 @@ function dashboard_export_data(PDO $pdo): array
     ];
 }
 
-function reports_export_data(PDO $pdo): array
+function reports_data(PDO $pdo): array
 {
     $ratings = $pdo->query(
         'SELECT u.name,
-                    COUNT(DISTINCT CASE
-                        WHEN c.type = \'material\' AND cr.liked = 1 THEN cr.content_id
-                    END) AS evaluations,
-                    COUNT(DISTINCT CASE
-                        WHEN c.type = \'material\' THEN cr.content_id
-                    END) AS materials_received
-             FROM users u
-             LEFT JOIN content_recipients cr ON cr.user_id = u.id
-             LEFT JOIN contents c ON c.id = cr.content_id
-             WHERE u.role = \'user\'
-             GROUP BY u.id, u.name
-             ORDER BY u.name'
+                (SELECT COUNT(DISTINCT cr1.content_id)
+                 FROM content_recipients cr1
+                 INNER JOIN contents c1 ON c1.id = cr1.content_id
+                 WHERE cr1.user_id = u.id
+                   AND c1.type = \'material\'
+                   AND cr1.liked = 1) AS evaluations,
+                (SELECT COUNT(DISTINCT cr2.content_id)
+                 FROM content_recipients cr2
+                 INNER JOIN contents c2 ON c2.id = cr2.content_id
+                 WHERE cr2.user_id = u.id
+                   AND c2.type = \'material\') AS materials_received
+         FROM users u
+         WHERE u.role = \'user\'
+         ORDER BY u.name'
     )->fetchAll();
 
     foreach ($ratings as &$item) {
@@ -111,24 +113,30 @@ function reports_export_data(PDO $pdo): array
     unset($item);
 
     $knowledge = $pdo->query(
-        'SELECT c.title, COALESCE(SUM(cr.opened), 0) AS opens,
+        'SELECT c.id, c.title,
+                COALESCE(SUM(cr.opened), 0) AS opens,
                 COALESCE(SUM(cr.liked), 0) AS likes,
                 (SELECT COUNT(*) FROM content_comments cc WHERE cc.content_id = c.id) AS comments
-         FROM contents c LEFT JOIN content_recipients cr ON cr.content_id = c.id
+         FROM contents c
+         LEFT JOIN content_recipients cr ON cr.content_id = c.id
          WHERE c.type = \'material\'
-         GROUP BY c.id, c.title ORDER BY c.created_at DESC'
+         GROUP BY c.id, c.title
+         ORDER BY c.created_at DESC'
     )->fetchAll();
 
     $tickets = $pdo->query(
-        'SELECT status, COUNT(*) AS total FROM tickets
+        'SELECT status, COUNT(*) AS total
+         FROM tickets
          GROUP BY status
          ORDER BY FIELD(status, \'Aberto\', \'Em Atendimento\', \'Concluído\')'
     )->fetchAll();
 
     $categories = $pdo->query(
         'SELECT c.name, COUNT(t.id) AS total
-         FROM categories c LEFT JOIN tickets t ON t.category_id = c.id
-         GROUP BY c.id, c.name ORDER BY total DESC, c.name'
+         FROM categories c
+         LEFT JOIN tickets t ON t.category_id = c.id
+         GROUP BY c.id, c.name
+         ORDER BY total DESC, c.name'
     )->fetchAll();
 
     $totalEvaluations = 0;
@@ -137,6 +145,7 @@ function reports_export_data(PDO $pdo): array
         $totalEvaluations += (int)$item['evaluations'];
         $totalMaterialsReceived += (int)$item['materials_received'];
     }
+
     $overallAverage = $totalMaterialsReceived > 0
         ? round(($totalEvaluations / $totalMaterialsReceived) * 100, 2)
         : 0;
@@ -153,6 +162,11 @@ function reports_export_data(PDO $pdo): array
             'status' => count($tickets),
         ],
     ];
+}
+
+function reports_export_data(PDO $pdo): array
+{
+    return reports_data($pdo);
 }
 
 function export_escape(string $value): string
@@ -418,7 +432,7 @@ function pdf_header(string &$c, string $title, string $eyebrow, string $subtitle
     return 708;
 }
 
-function pdf_kpi(string &$c, float $x, float $y, float $w, float $h, string $label, int|float|string $value, array $color): void
+function pdf_kpi(string &$c, float $x, float $y, float $w, float $h, string $label, int|float $value, array $color): void
 {
     pdf_fill($c,$x,$y,$w,$h,[1,1,1]);
     pdf_stroke($c,$x,$y,$w,$h,[0.82,0.87,0.90]);
