@@ -129,11 +129,11 @@ try {
                 if (stripos((string)($rating['name'] ?? ''), 'Administrador Principal') !== false) {
                     throw new RuntimeException('O administrador não deve aparecer nas avaliações por usuário.');
                 }
-                if (!array_key_exists('material_likes', $rating)) {
-                    throw new RuntimeException('O relatório não retornou a quantidade de curtidas em materiais.');
+                if (!array_key_exists('materials_received', $rating)) {
+                    throw new RuntimeException('O relatório não retornou a quantidade de materiais recebidos.');
                 }
             }
-            echo "PASS: relatório de satisfação sem administrador e com curtidas em materiais\n";
+            echo "PASS: relatório de satisfação sem administrador e com curtidas e materiais recebidos\n";
         }
     }
 

@@ -973,25 +973,28 @@ try {
 
         $ratings = $pdo->query(
             'SELECT u.name,
-                    COALESCE(r.evaluations, 0) AS evaluations,
-                    COALESCE(r.average_rating, 0) AS average_rating,
-                    COALESCE(l.material_likes, 0) AS material_likes
+                    (SELECT COUNT(DISTINCT cr.content_id)
+                     FROM content_recipients cr
+                     INNER JOIN contents c ON c.id = cr.content_id
+                     WHERE cr.user_id = u.id
+                       AND c.type = \'material\'
+                       AND cr.liked = 1) AS evaluations,
+                    (SELECT COUNT(DISTINCT cr.content_id)
+                     FROM content_recipients cr
+                     INNER JOIN contents c ON c.id = cr.content_id
+                     WHERE cr.user_id = u.id
+                       AND c.type = \'material\') AS materials_received
              FROM users u
-             LEFT JOIN (
-                 SELECT user_id, COUNT(*) AS evaluations, ROUND(AVG(rating), 2) AS average_rating
-                 FROM ticket_ratings
-                 GROUP BY user_id
-             ) r ON r.user_id = u.id
-             LEFT JOIN (
-                 SELECT cr.user_id, SUM(cr.liked) AS material_likes
-                 FROM content_recipients cr
-                 INNER JOIN contents c ON c.id = cr.content_id
-                 WHERE c.type = \'material\' AND cr.liked = 1
-                 GROUP BY cr.user_id
-             ) l ON l.user_id = u.id
              WHERE u.role = \'user\'
              ORDER BY u.name'
         )->fetchAll();
+
+        foreach ($ratings as &$item) {
+            $liked = (int)$item['evaluations'];
+            $received = (int)$item['materials_received'];
+            $item['average_rating'] = $received > 0 ? round(($liked / $received) * 100, 2) : 0;
+        }
+        unset($item);
 
         $knowledge = $pdo->query(
             'SELECT c.id, c.title,

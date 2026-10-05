@@ -89,25 +89,28 @@ function reports_export_data(PDO $pdo): array
 {
     $ratings = $pdo->query(
         'SELECT u.name,
-                COALESCE(r.evaluations, 0) AS evaluations,
-                COALESCE(r.average_rating, 0) AS average_rating,
-                COALESCE(l.material_likes, 0) AS material_likes
+                (SELECT COUNT(DISTINCT cr.content_id)
+                 FROM content_recipients cr
+                 INNER JOIN contents c ON c.id = cr.content_id
+                 WHERE cr.user_id = u.id
+                   AND c.type = \'material\'
+                   AND cr.liked = 1) AS evaluations,
+                (SELECT COUNT(DISTINCT cr.content_id)
+                 FROM content_recipients cr
+                 INNER JOIN contents c ON c.id = cr.content_id
+                 WHERE cr.user_id = u.id
+                   AND c.type = \'material\') AS materials_received
          FROM users u
-         LEFT JOIN (
-             SELECT user_id, COUNT(*) AS evaluations, ROUND(AVG(rating), 2) AS average_rating
-             FROM ticket_ratings
-             GROUP BY user_id
-         ) r ON r.user_id = u.id
-         LEFT JOIN (
-             SELECT cr.user_id, SUM(cr.liked) AS material_likes
-             FROM content_recipients cr
-             INNER JOIN contents c ON c.id = cr.content_id
-             WHERE c.type = \'material\' AND cr.liked = 1
-             GROUP BY cr.user_id
-         ) l ON l.user_id = u.id
          WHERE u.role = \'user\'
          ORDER BY u.name'
     )->fetchAll();
+
+    foreach ($ratings as &$item) {
+        $liked = (int)$item['evaluations'];
+        $received = (int)$item['materials_received'];
+        $item['average_rating'] = $received > 0 ? round(($liked / $received) * 100, 2) : 0;
+    }
+    unset($item);
 
     $knowledge = $pdo->query(
         'SELECT c.title, COALESCE(SUM(cr.opened), 0) AS opens,
@@ -131,12 +134,14 @@ function reports_export_data(PDO $pdo): array
     )->fetchAll();
 
     $totalEvaluations = 0;
-    $ratingTotal = 0.0;
+    $totalMaterialsReceived = 0;
     foreach ($ratings as $item) {
-        $evaluations = (int)$item['evaluations'];
-        $totalEvaluations += $evaluations;
-        $ratingTotal += (float)$item['average_rating'] * $evaluations;
+        $totalEvaluations += (int)$item['evaluations'];
+        $totalMaterialsReceived += (int)$item['materials_received'];
     }
+    $overallAverage = $totalMaterialsReceived > 0
+        ? round(($totalEvaluations / $totalMaterialsReceived) * 100, 2)
+        : 0;
 
     return [
         'ratings' => $ratings,
@@ -145,7 +150,7 @@ function reports_export_data(PDO $pdo): array
         'categories' => $categories,
         'summary' => [
             'evaluations' => $totalEvaluations,
-            'average' => $totalEvaluations ? round($ratingTotal / $totalEvaluations, 2) : 0,
+            'average' => $overallAverage,
             'materials' => count($knowledge),
             'status' => count($tickets),
         ],
@@ -260,8 +265,8 @@ function reports_excel_html(array $data): string
     $body = '<div class="sheet"><div class="title">ConectaDesk — Relatórios</div><div class="eyebrow">ANÁLISE</div><div class="subtitle">Resultados do atendimento e desempenho dos materiais de conhecimento.</div>';
     $body .= '<div class="kpis">';
     foreach ([
-        ['Avaliações', $summary['evaluations'], 'Respostas registradas'],
-        ['Média geral', number_format((float)$summary['average'], 2, '.', ''), 'Nota dos atendimentos'],
+        ['Avaliações', $summary['evaluations'], 'Materiais curtidos'],
+        ['Média geral', number_format((float)$summary['average'], 2, '.', '').'%', 'Curtidas em relação aos materiais recebidos'],
         ['Materiais', $summary['materials'], 'Conteúdos analisados'],
         ['Status', $summary['status'], 'Situações acompanhadas'],
     ] as $kpi) {
@@ -270,10 +275,9 @@ function reports_excel_html(array $data): string
     $body .= '</div>';
     $body .= '<div class="layout"><div class="panel-cell"><div class="panel"><div class="eyebrow">ATENDIMENTO</div><h2>Resultado por status</h2><table><tr><th>Status</th><th>Total</th></tr>';
     foreach ($data['tickets'] as $item) $body .= '<tr><td>'.export_escape((string)$item['status']).'</td><td>'.(int)$item['total'].'</td></tr>';
-    $body .= '</table></div></div><div class="panel-cell"><div class="panel"><div class="eyebrow">AVALIAÇÕES</div><h2>Avaliações por usuário</h2><table><tr><th>Usuário</th><th>Avaliações</th><th>Média</th><th>Curtidas em materiais</th></tr>';
+    $body .= '</table></div></div><div class="panel-cell"><div class="panel"><div class="eyebrow">AVALIAÇÕES</div><h2>Avaliações por usuário</h2><table><tr><th>Usuário</th><th>Avaliações</th><th>Média</th><th>Materiais recebidos</th></tr>';
     foreach ($data['ratings'] as $item) {
-        $likes = (int)$item['material_likes'];
-        $body .= '<tr><td>'.export_escape((string)$item['name']).'</td><td>'.(int)$item['evaluations'].'</td><td>'.export_escape((string)$item['average_rating']).'</td><td>'.($likes > 0 ? 'Sim · '.$likes : 'Não').'</td></tr>';
+        $body .= '<tr><td>'.export_escape((string)$item['name']).'</td><td>'.(int)$item['evaluations'].'</td><td>'.export_escape((string)$item['average_rating']).'%</td><td>'.(int)$item['materials_received'].'</td></tr>';
     }
     $body .= '</table></div></div></div>';
     $body .= '<div class="section panel"><div class="eyebrow">CONHECIMENTO</div><div class="section-title">Resultados da Base de Conhecimento</div><table><tr><th>Material</th><th>Aberturas</th><th>Curtidas</th><th>Comentários</th></tr>';
@@ -548,7 +552,7 @@ function send_reports_pdf(array $data): never
     $summary=$data['summary'];
     $x=55;$w=258;$gap=18;$y=620;$h=72;
     pdf_kpi($c,$x,$y,$w,$h,'Avaliações',$summary['evaluations'],[1,1,1]);
-    pdf_kpi($c,$x+$w+$gap,$y,$w,$h,'Média geral',(float)$summary['average'],[1,1,1]);
+    pdf_kpi($c,$x+$w+$gap,$y,$w,$h,'Média geral',number_format((float)$summary['average'],2,'.','').'%',[1,1,1]);
     pdf_kpi($c,$x+2*($w+$gap),$y,$w,$h,'Materiais',$summary['materials'],[1,1,1]);
     pdf_kpi($c,$x+3*($w+$gap),$y,$w,$h,'Status',$summary['status'],[1,1,1]);
 
@@ -557,8 +561,8 @@ function send_reports_pdf(array $data): never
     pdf_text($c,$left+18,$panelY+$panelH-25,'ATENDIMENTO',10,true,[0.16,0.35,0.62]);pdf_text($c,$left+18,$panelY+$panelH-47,'Resultado por status',15,true);
     $yy=$panelY+$panelH-82;foreach($data['tickets'] as $item){pdf_text($c,$left+22,$yy,(string)$item['status'],9);pdf_text($c,$left+400,$yy,(string)$item['total'],9,true);$yy-=27;}
     pdf_text($c,$right+18,$panelY+$panelH-25,'AVALIAÇÕES',10,true,[0.16,0.35,0.62]);pdf_text($c,$right+18,$panelY+$panelH-47,'Avaliações por usuário',15,true);
-    pdf_text($c,$right+22,$panelY+$panelH-70,'Usuário',8,true,[0.35,0.44,0.50]); pdf_text($c,$right+290,$panelY+$panelH-70,'Avaliações',8,true,[0.35,0.44,0.50]); pdf_text($c,$right+365,$panelY+$panelH-70,'Média',8,true,[0.35,0.44,0.50]); pdf_text($c,$right+430,$panelY+$panelH-70,'Curtidas',8,true,[0.35,0.44,0.50]);
-    $yy=$panelY+$panelH-88; foreach($data['ratings'] as $item){ $likes=(int)$item['material_likes']; pdf_text($c,$right+22,$yy,export_trim((string)$item['name'], 24),9); pdf_text($c,$right+290,$yy,(string)$item['evaluations'],9); pdf_text($c,$right+365,$yy,(string)$item['average_rating'],9,true); pdf_text($c,$right+430,$yy,$likes>0?'Sim · '.$likes:'Não',9); $yy-=23; if($yy<$panelY+25)break; }
+    pdf_text($c,$right+22,$panelY+$panelH-70,'Usuário',8,true,[0.35,0.44,0.50]); pdf_text($c,$right+290,$panelY+$panelH-70,'Avaliações',8,true,[0.35,0.44,0.50]); pdf_text($c,$right+365,$panelY+$panelH-70,'Média',8,true,[0.35,0.44,0.50]); pdf_text($c,$right+430,$panelY+$panelH-70,'Recebidos',8,true,[0.35,0.44,0.50]);
+    $yy=$panelY+$panelH-88; foreach($data['ratings'] as $item){ pdf_text($c,$right+22,$yy,export_trim((string)$item['name'], 24),9); pdf_text($c,$right+290,$yy,(string)$item['evaluations'],9); pdf_text($c,$right+365,$yy,(string)$item['average_rating'].'%',9,true); pdf_text($c,$right+430,$yy,(string)$item['materials_received'],9); $yy-=23; if($yy<$panelY+25)break; }
     $ky=70;pdf_stroke($c,55,$ky,1080,225);pdf_text($c,73,$ky+197,'CONHECIMENTO',10,true,[0.16,0.35,0.62]);pdf_text($c,73,$ky+175,'Resultados da Base de Conhecimento',15,true);
     $yy=$ky+145;foreach([['Material',73],['Aberturas',570],['Curtidas',680],['Comentários',790]] as [$h,$xx]) pdf_text($c,$xx,$yy,$h,10,true,[0.35,0.44,0.50]);$yy-=25;
     foreach($data['knowledge'] as $item){if($yy<$ky+22)break;pdf_text($c,73,$yy,export_trim((string)$item['title'], 58),9);pdf_text($c,570,$yy,(string)$item['opens'],9);pdf_text($c,680,$yy,(string)$item['likes'],9);pdf_text($c,790,$yy,(string)$item['comments'],9);$yy-=23;}

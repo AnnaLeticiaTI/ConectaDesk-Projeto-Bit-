@@ -937,20 +937,21 @@ async function deleteContent(contentId) {
 // relatórios
 function renderReports(data) {
     const totalEvaluations = data.ratings.reduce((sum, item) => sum + Number(item.evaluations), 0);
-    const average = totalEvaluations ? (data.ratings.reduce((sum, item) => sum + Number(item.average_rating) * Number(item.evaluations), 0) / totalEvaluations).toFixed(2) : '0.00';
+    const totalMaterialsReceived = data.ratings.reduce((sum, item) => sum + Number(item.materials_received), 0);
+    const average = totalMaterialsReceived ? ((totalEvaluations / totalMaterialsReceived) * 100).toFixed(2) : '0.00';
     const updatedAt = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     $('#content').innerHTML = `
         <div class="page-intro"><div><span class="eyebrow">Análise</span><h3>Relatórios</h3><p>Resultados do atendimento e desempenho dos materiais de conhecimento.</p></div><div class="export-actions"><span class="report-live-status"><i></i> Atualização automática · ${updatedAt}</span><button class="secondary" type="button" onclick="exportReports('pdf')">${icon('download')} PDF</button><button class="secondary" type="button" onclick="exportReports('excel')">${icon('download')} Excel</button></div></div>
         <section class="grid cards report-kpis">
-            ${metricCard('Avaliações', totalEvaluations, 'Respostas registradas')}
-            ${metricCard('Média geral', average, 'Nota dos atendimentos')}
+            ${metricCard('Avaliações', totalEvaluations, 'Materiais curtidos')}
+            ${metricCard('Média geral', `${average}%`, 'Curtidas em relação aos materiais recebidos')}
             ${metricCard('Materiais', data.knowledge.length, 'Conteúdos analisados')}
             ${metricCard('Status', data.tickets.length, 'Situações acompanhadas')}
         </section>
         <section class="grid two report-grid">
             <article class="card"><div class="section-title"><div><span class="eyebrow">Chamados</span><h3>Resultado por status</h3></div></div><div class="report-status-list">${data.tickets.map((item) => `<div><span>${statusBadge(item.status)}</span><strong>${item.total}</strong></div>`).join('')}</div></article>
-            <article class="card"><div class="section-title"><div><span class="eyebrow">Satisfação</span><h3>Avaliações por usuário</h3></div></div><div class="table-wrap"><table class="table compact"><thead><tr><th>Usuário</th><th>Avaliações</th><th>Média</th><th>Curtidas em materiais</th></tr></thead><tbody>${data.ratings.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td>${item.evaluations}</td><td>${item.average_rating}</td><td><span class="report-like-status ${Number(item.material_likes) > 0 ? 'is-liked' : ''}">${Number(item.material_likes) > 0 ? `Sim · ${item.material_likes}` : 'Não'}</span></td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nenhum usuário disponível.</div></td></tr>'}</tbody></table></div></article>
+            <article class="card"><div class="section-title"><div><span class="eyebrow">Satisfação</span><h3>Avaliações por usuário</h3></div></div><div class="table-wrap"><table class="table compact"><thead><tr><th>Usuário</th><th>Avaliações</th><th>Média</th><th>Materiais recebidos</th></tr></thead><tbody>${data.ratings.map((item) => `<tr><td>${escapeHtml(item.name)}</td><td>${item.evaluations}</td><td>${item.average_rating}%</td><td>${item.materials_received}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nenhum usuário disponível.</div></td></tr>'}</tbody></table></div></article>
         </section>
         <article class="card report-knowledge-card"><div class="section-title"><div><span class="eyebrow">Conhecimento</span><h3>Resultados da Base de Conhecimento</h3></div></div><div class="table-wrap"><table class="table"><thead><tr><th>Material</th><th>Aberturas</th><th>Curtidas</th><th>Comentários</th></tr></thead><tbody>${data.knowledge.map((item) => `<tr><td><b>${escapeHtml(item.title)}</b></td><td>${item.opens}</td><td>${item.likes}</td><td>${item.comments}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nenhum material avaliado.</div></td></tr>'}</tbody></table></div></article>`;
 }
