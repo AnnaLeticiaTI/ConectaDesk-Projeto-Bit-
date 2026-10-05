@@ -58,7 +58,7 @@ function dashboard_export_data(PDO $pdo): array
 
     $users = $pdo->query(
         'SELECT u.name, COUNT(t.id) AS total,
-                COALESCE(SUM(CASE WHEN t.status = "Concluído" THEN 1 ELSE 0 END), 0) AS solved
+                COALESCE(SUM(CASE WHEN t.status = \'Concluído\' THEN 1 ELSE 0 END), 0) AS solved
          FROM users u LEFT JOIN tickets t ON t.requester_id = u.id
          GROUP BY u.id, u.name ORDER BY total DESC, u.name'
     )->fetchAll();
@@ -99,14 +99,14 @@ function reports_export_data(PDO $pdo): array
                 COALESCE(SUM(cr.liked), 0) AS likes,
                 (SELECT COUNT(*) FROM content_comments cc WHERE cc.content_id = c.id) AS comments
          FROM contents c LEFT JOIN content_recipients cr ON cr.content_id = c.id
-         WHERE c.type = "material"
+         WHERE c.type = \'material\'
          GROUP BY c.id, c.title ORDER BY c.created_at DESC'
     )->fetchAll();
 
     $tickets = $pdo->query(
         'SELECT status, COUNT(*) AS total FROM tickets
          GROUP BY status
-         ORDER BY FIELD(status, "Aberto", "Em Atendimento", "Concluído")'
+         ORDER BY FIELD(status, \'Aberto\', \'Em Atendimento\', \'Concluído\')'
     )->fetchAll();
 
     $categories = $pdo->query(

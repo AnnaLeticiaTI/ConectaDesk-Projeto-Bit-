@@ -112,7 +112,7 @@ if ((int)$pdo->query('SELECT COUNT(*) FROM contents')->fetchColumn() === 0) {
     );
     $recipientStatement = $pdo->prepare(
         'INSERT INTO content_recipients (content_id, user_id, start_date, frequency, created_at)
-         VALUES (?, ?, CURDATE(), "once", ?)'
+         VALUES (?, ?, CURDATE(), \'once\', ?)'
     );
     $notificationStatement = $pdo->prepare(
         'INSERT INTO notifications (user_id, type, title, body, created_at)

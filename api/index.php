@@ -89,7 +89,7 @@ try {
             'INSERT INTO users
                 (name, username, password_hash, email, secondary_email, phone, department, role, created_at)
              VALUES
-                (:name, :username, :password_hash, :email, :secondary_email, :phone, :department, "user", :created_at)'
+                (:name, :username, :password_hash, :email, :secondary_email, :phone, :department, \'user\', :created_at)'
         );
         $stmt->execute([
             'name' => $name,
@@ -279,7 +279,7 @@ try {
         try {
             $stmt = $pdo->prepare(
                 'INSERT INTO tickets (code, title, description, category_id, requester_id, status, created_at, updated_at)
-                 VALUES (NULL, ?, ?, ?, ?, "Aberto", ?, ?)'
+                 VALUES (NULL, ?, ?, ?, ?, \'Aberto\', ?, ?)'
             );
             $stmt->execute([$title, $description, $categoryId, (int)$user['id'], now(), now()]);
             $ticketId = (int)$pdo->lastInsertId();
@@ -381,7 +381,7 @@ try {
             if ($status !== $ticket['status']) {
                 $pdo->prepare(
                     'INSERT INTO notifications (user_id, type, title, body, created_at)
-                     VALUES (?, "ticket", ?, ?, ?)'
+                     VALUES (?, \'ticket\', ?, ?, ?)'
                 )->execute([
                     (int)$ticket['requester_id'],
                     'Seu chamado tem uma nova movimentação',
@@ -468,7 +468,7 @@ try {
         if ($user['role'] === 'admin' && (int)$ticket['requester_id'] !== (int)$user['id']) {
             $pdo->prepare(
                 'INSERT INTO notifications (user_id, type, title, body, created_at)
-                 VALUES (?, "ticket", ?, ?, ?)'
+                 VALUES (?, \'ticket\', ?, ?, ?)'
             )->execute([
                 (int)$ticket['requester_id'],
                 'Seu chamado tem uma nova movimentação',
@@ -535,7 +535,7 @@ try {
         $users = $pdo->query(
             'SELECT u.id, u.name,
                     COUNT(t.id) AS total,
-                    COALESCE(SUM(CASE WHEN t.status = "Concluído" THEN 1 ELSE 0 END), 0) AS solved
+                    COALESCE(SUM(CASE WHEN t.status = \'Concluído\' THEN 1 ELSE 0 END), 0) AS solved
              FROM users u
              LEFT JOIN tickets t ON t.requester_id = u.id
              GROUP BY u.id, u.name
@@ -886,14 +886,14 @@ try {
                     (SELECT COUNT(*) FROM content_comments cc WHERE cc.content_id = c.id) AS comments
              FROM contents c
              LEFT JOIN content_recipients cr ON cr.content_id = c.id
-             WHERE c.type = "material"
+             WHERE c.type = \'material\'
              GROUP BY c.id, c.title
              ORDER BY c.created_at DESC'
         )->fetchAll();
 
         $tickets = $pdo->query(
             'SELECT status, COUNT(*) AS total
-             FROM tickets GROUP BY status ORDER BY FIELD(status, "Aberto", "Em Atendimento", "Concluído")'
+             FROM tickets GROUP BY status ORDER BY FIELD(status, \'Aberto\', \'Em Atendimento\', \'Concluído\')'
         )->fetchAll();
 
         $categories = $pdo->query(
