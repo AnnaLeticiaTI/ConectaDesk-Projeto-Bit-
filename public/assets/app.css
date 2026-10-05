@@ -1879,37 +1879,3 @@ body.dark .login-card input {
 #content > .card + .card {
     margin-top: 30px;
 }
-
-/* relatorios */
-.report-live-status {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    color: #607486;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.report-live-status i {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #4aa878;
-    box-shadow: 0 0 0 3px rgba(74, 168, 120, 0.12);
-}
-
-.report-like-status {
-    color: #718292;
-    font-weight: 600;
-}
-
-.report-like-status.is-liked {
-    color: #3f8d68;
-}
-
-@media (max-width: 1050px) {
-    .report-live-status {
-        width: 100%;
-    }
-}
