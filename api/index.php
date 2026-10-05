@@ -68,14 +68,16 @@ try {
 
         $stmt = db()->prepare(
             "SELECT id FROM users
-             WHERE username = :username OR email = :email
-                OR (:secondary_email <> '' AND secondary_email = :secondary_email)
+             WHERE username = :username
+                OR email = :email
+                OR (:secondary_email_check <> '' AND secondary_email = :secondary_email_value)
              LIMIT 1"
         );
         $stmt->execute([
             'username' => $username,
             'email' => $email,
-            'secondary_email' => $secondaryEmail,
+            'secondary_email_check' => $secondaryEmail,
+            'secondary_email_value' => $secondaryEmail,
         ]);
 
         if ($stmt->fetch()) {
@@ -984,8 +986,6 @@ try {
              GROUP BY u.id, u.name
              ORDER BY u.name'
         )->fetchAll();
-
-        $ratings = array_values(array_filter($ratings, static fn(array $item): bool => (string)($item['name'] ?? '') !== 'Administrador Principal'));
 
         foreach ($ratings as &$item) {
             $liked = (int)$item['evaluations'];

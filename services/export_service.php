@@ -103,8 +103,6 @@ function reports_export_data(PDO $pdo): array
              ORDER BY u.name'
     )->fetchAll();
 
-    $ratings = array_values(array_filter($ratings, static fn(array $item): bool => (string)($item['name'] ?? '') !== 'Administrador Principal'));
-
     foreach ($ratings as &$item) {
         $liked = (int)$item['evaluations'];
         $received = (int)$item['materials_received'];
@@ -420,7 +418,7 @@ function pdf_header(string &$c, string $title, string $eyebrow, string $subtitle
     return 708;
 }
 
-function pdf_kpi(string &$c, float $x, float $y, float $w, float $h, string $label, int|float $value, array $color): void
+function pdf_kpi(string &$c, float $x, float $y, float $w, float $h, string $label, int|float|string $value, array $color): void
 {
     pdf_fill($c,$x,$y,$w,$h,[1,1,1]);
     pdf_stroke($c,$x,$y,$w,$h,[0.82,0.87,0.90]);

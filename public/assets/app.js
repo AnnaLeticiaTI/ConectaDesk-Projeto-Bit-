@@ -104,7 +104,12 @@ async function api(url, options = {}) {
 
         let response;
         try {
-            response = await fetch(url, { ...options, headers });
+            const requestOptions = { ...options, headers };
+            delete requestOptions.cache;
+            if (options.cache === false) {
+                requestOptions.cache = 'no-store';
+            }
+            response = await fetch(url, requestOptions);
         } catch {
             throw new Error('Não foi possível conectar ao ConectaDesk. Verifique se o servidor está em execução.');
         }
@@ -160,10 +165,6 @@ async function init() {
 function showLogin() {
     $('#loginView').classList.remove('hidden');
     $('#app').classList.add('hidden');
-    const registerButton = $('#registerBtn');
-    if (registerButton) {
-        registerButton.onclick = openRegister;
-    }
 }
 
 function showApp() {
