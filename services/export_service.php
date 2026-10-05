@@ -419,6 +419,59 @@ function pdf_bar(string &$c, float $x, float $y, float $w, float $h, float $rati
     pdf_fill($c,$x,$y,$w*max(0,min(1,$ratio)),$h,$color);
 }
 
+function send_simple_pdf(string $title, array $lines, string $filename): never
+{
+    $pages = [];
+    $content = '';
+    $width = 595.28;
+    $height = 841.89;
+    pdf_fill($content, 0, 0, $width, $height, [1, 1, 1]);
+    pdf_text($content, 42, 785, 'ConectaDesk', 11, true, [0.08, 0.25, 0.36]);
+    pdf_text($content, 42, 748, $title, 20, true);
+
+    $y = 710;
+    foreach ($lines as $line) {
+        if ($y < 55) {
+            $pages[] = $content;
+            $content = '';
+            pdf_fill($content, 0, 0, $width, $height, [1, 1, 1]);
+            $y = 785;
+        }
+
+        $text = (string)$line;
+        if ($text === '') {
+            $y -= 14;
+            continue;
+        }
+
+        $words = preg_split('/\s+/', $text) ?: [];
+        $current = '';
+        foreach ($words as $word) {
+            $candidate = $current === '' ? $word : $current . ' ' . $word;
+            if (strlen($candidate) > 88) {
+                pdf_text($content, 42, $y, $current, 10);
+                $y -= 17;
+                $current = $word;
+            } else {
+                $current = $candidate;
+            }
+        }
+        if ($current !== '') {
+            pdf_text($content, 42, $y, $current, 10);
+            $y -= 17;
+        }
+        $y -= 5;
+    }
+
+    $pages[] = $content;
+    $pdf = pdf_document($pages, $width, $height);
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: attachment; filename="' . basename($filename) . '"');
+    header('Content-Length: ' . strlen($pdf));
+    echo $pdf;
+    exit;
+}
+
 function send_dashboard_pdf(array $data): never
 {
     $pages=[]; $c='';

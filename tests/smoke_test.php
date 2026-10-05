@@ -94,6 +94,18 @@ try {
     }
     echo "PASS: perfil administrador\n";
 
+    [$status, $body] = request('GET', '/api/auth/me');
+    assert_status('sessão autenticada', 200, $status);
+    $currentUser = json_body($body)['user'] ?? [];
+    [$status] = request('PUT', '/api/profile', [
+        'name' => $currentUser['name'] ?? 'Administrador Principal',
+        'email' => $currentUser['email'] ?? 'admin@conectadesk.local',
+        'secondary_email' => $currentUser['secondary_email'] ?? '',
+        'phone' => $currentUser['phone'] ?? '',
+        'department' => $currentUser['department'] ?? 'Tecnologia da Informação',
+    ], 'application/json');
+    assert_status('atualização de perfil', 200, $status);
+
     [$status, $body] = request('GET', '/api/categories');
     assert_status('categorias', 200, $status);
     $categories = json_body($body);
@@ -135,6 +147,19 @@ try {
         'category_id' => (string)$categoryId,
     ], 'application/json');
     assert_status('edição de chamado aberto', 200, $status);
+
+    [$status, $body] = request('GET', '/api/contents');
+    assert_status('conteúdos', 200, $status);
+    $contents = json_body($body);
+    $contentId = (int)($contents['items'][0]['id'] ?? 0);
+    if ($contentId > 0) {
+        [$status, $body] = request('GET', '/api/contents/' . $contentId . '/pdf');
+        assert_status('PDF de material', 200, $status);
+        if (strncmp($body, '%PDF-', 5) !== 0) {
+            throw new RuntimeException('PDF de material não retornou um documento PDF válido.');
+        }
+        echo "PASS: conteúdo do PDF de material\n";
+    }
 
     [$status] = request('GET', '/api/export/dashboard?format=pdf');
     assert_status('exportação dashboard PDF', 200, $status);

@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS users (
  role ENUM('admin','user') NOT NULL DEFAULT 'user',
  is_super_admin TINYINT(1) NOT NULL DEFAULT 0,
  avatar_path VARCHAR(255) NULL,
+ avatar_data LONGBLOB NULL,
+ avatar_mime_type VARCHAR(80) NULL,
  created_at DATETIME NOT NULL
 ) ENGINE=InnoDB;
 
@@ -61,6 +63,7 @@ CREATE TABLE IF NOT EXISTS ticket_attachments (
  file_path VARCHAR(255) NOT NULL,
  original_name VARCHAR(255) NOT NULL,
  mime_type VARCHAR(80) NOT NULL,
+ file_data LONGBLOB NULL,
  created_at DATETIME NOT NULL,
  FOREIGN KEY(ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
  FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE

@@ -99,18 +99,6 @@ function db(): PDO
 
     try {
         $pdo = new PDO($dsn, $user, $password, $options);
-        $pdo->exec(
-            'CREATE TABLE IF NOT EXISTS auth_sessions (
-                id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-                token_hash CHAR(64) NOT NULL UNIQUE,
-                user_id INT UNSIGNED NOT NULL,
-                expires_at DATETIME NOT NULL,
-                created_at DATETIME NOT NULL,
-                INDEX idx_auth_sessions_user (user_id),
-                INDEX idx_auth_sessions_expires (expires_at),
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            ) ENGINE=InnoDB'
-        );
     } catch (Throwable $exception) {
         throw new RuntimeException('Não foi possível conectar ao banco de dados.', 0, $exception);
     }
@@ -243,7 +231,7 @@ function ticket_code(int $id): string
 
 function public_user(array $user): array
 {
-    unset($user['password_hash']);
+    unset($user['password_hash'], $user['avatar_data'], $user['avatar_mime_type']);
     return $user;
 }
 
@@ -276,14 +264,18 @@ function upload_image(array $file): ?array
     $name = bin2hex(random_bytes(12)) . '.' . $extension;
     $path = UPLOAD_DIR . $name;
 
-    if (!move_uploaded_file($file['tmp_name'], $path)) {
-        json_response(['error' => 'Não foi possível salvar a imagem.'], 500);
+    $data = file_get_contents($file['tmp_name']);
+    if ($data === false) {
+        json_response(['error' => 'Não foi possível ler a imagem.'], 422);
     }
+
+    @file_put_contents($path, $data, LOCK_EX);
 
     return [
         'path' => 'storage/uploads/' . $name,
         'original_name' => $file['name'],
         'mime_type' => $mime,
+        'data' => $data,
     ];
 }
 

@@ -16,7 +16,9 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 - `department` — VARCHAR(100) — departamento
 - `role` — ENUM('admin','user') — perfil de acesso
 - `is_super_admin` — TINYINT(1) — permissão para alterar perfis
-- `avatar_path` — VARCHAR(255) — caminho da foto de perfil
+- `avatar_path` — VARCHAR(255) — rota de acesso à foto de perfil
+- `avatar_data` — LONGBLOB — conteúdo da foto de perfil
+- `avatar_mime_type` — VARCHAR(80) — tipo da foto de perfil
 - `created_at` — DATETIME — data de cadastro
 
 ## auth_sessions
@@ -58,6 +60,7 @@ A estrutura abaixo corresponde ao `database/schema.sql`.
 - `file_path` — VARCHAR(255) — caminho do arquivo
 - `original_name` — VARCHAR(255) — nome original do arquivo
 - `mime_type` — VARCHAR(80) — tipo do arquivo
+- `file_data` — LONGBLOB — conteúdo binário do anexo
 - `created_at` — DATETIME — data do envio
 
 ## ticket_comments

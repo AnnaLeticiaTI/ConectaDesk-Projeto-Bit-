@@ -33,7 +33,7 @@ Senha: `Conecta@123`
 
 ## Banco
 
-`database/schema.sql` cria o banco e as tabelas. `database/seed.php` insere os dados de demonstração.
+`database/schema.sql` cria o banco e as tabelas. `database/migrate.php` aplica ajustes de estrutura em bancos já existentes. `database/seed.php` insere os dados de demonstração.
 
 ## Pastas
 
@@ -41,7 +41,7 @@ Senha: `Conecta@123`
 - `public/` — frontend
 - `config/` — conexão e configurações
 - `database/` — SQL e dados iniciais
-- `storage/` — arquivos enviados
+- `storage/` — arquivos locais temporários; os anexos e fotos também ficam persistidos no banco
 
 Documentação complementar: `MEMORIAL_TECNICO.md` e `DICIONARIO_DE_DADOS.md`.
 

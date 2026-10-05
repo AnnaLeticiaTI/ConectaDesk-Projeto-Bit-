@@ -5,6 +5,7 @@ const state = {
     categories: [],
     users: [],
     tickets: [],
+    notificationTimer: null,
 };
 
 // menus do portal
@@ -337,7 +338,7 @@ function renderUserHome() {
         </div>
         <section class="quick-grid">
             <button class="quick-card" onclick="go('tickets')"><span class="quick-icon">${icon('ticket')}</span><b>Chamados</b><span>Consulte a fila e acompanhe as movimentações das solicitações.</span></button>
-            <button class="quick-card" onclick="go('mine')"><span class="quick-icon">${icon('check')}</span><b>Meus Chamados</b><span>Veja suas solicitações e adicione novas informações ao atendimento.</span></button>
+            <button class="quick-card" onclick="go('mine')"><span class="quick-icon">${icon('headset')}</span><b>Meus Chamados</b><span>Veja suas solicitações e adicione novas informações ao atendimento.</span></button>
             <button class="quick-card" onclick="go('knowledge')"><span class="quick-icon">${icon('book')}</span><b>Materiais de apoio</b><span>Leia tutoriais preparados para resolver dúvidas recorrentes.</span></button>
             <button class="quick-card" onclick="go('notices')"><span class="quick-icon">${icon('bell')}</span><b>Avisos</b><span>Confira comunicados publicados pela equipe de atendimento.</span></button>
         </section>
@@ -402,8 +403,7 @@ function ticketTable(items, showRequester = true) {
 
 // chamados
 async function tickets() {
-    await loadCategories();
-    const data = await api('/api/tickets');
+    const [_, data] = await Promise.all([loadCategories(), api('/api/tickets')]);
     state.tickets = data.items;
 
     $('#content').innerHTML = `
@@ -447,8 +447,7 @@ function clearTicketFilters() {
 
 // meus chamados
 async function mine() {
-    await loadCategories();
-    const data = await api('/api/tickets');
+    const [_, data] = await Promise.all([loadCategories(), api('/api/tickets')]);
     const items = data.items.filter((ticket) => Number(ticket.requester_id) === Number(state.user.id));
 
     $('#content').innerHTML = `
@@ -690,6 +689,72 @@ async function likeContent(id) {
     }
 }
 
+// notificacoes
+async function loadNotifications() {
+    const data = await api('/api/notifications');
+    return data.items || [];
+}
+
+async function refreshNotificationDot() {
+    try {
+        const items = await loadNotifications();
+        const unread = items.some((item) => !item.read_at);
+        $('#notifDot').classList.toggle('hidden', !unread);
+    } catch {
+        $('#notifDot').classList.add('hidden');
+    }
+}
+
+function closeNotifications() {
+    $('#notificationDrawer').classList.add('hidden');
+    $('#drawerOverlay').classList.add('hidden');
+}
+
+async function openNotifications() {
+    try {
+        const items = await loadNotifications();
+        const list = $('#notificationList');
+        if (!items.length) {
+            list.innerHTML = '<div class="empty">Nenhuma notificação disponível.</div>';
+        } else {
+            list.innerHTML = items.map((item) => `
+                <button class="notification-item ${item.read_at ? 'read' : ''}" type="button" data-notification-id="${item.id}">
+                    <span class="notification-icon">${icon('bell')}</span>
+                    <span><b>${escapeHtml(item.title)}</b><small>${escapeHtml(item.body)}</small><time>${formatDate(item.created_at, true)}</time></span>
+                </button>`).join('');
+
+            list.querySelectorAll('[data-notification-id]').forEach((button) => {
+                button.addEventListener('click', async () => {
+                    const id = Number(button.dataset.notificationId);
+                    if (!button.classList.contains('read')) {
+                        try {
+                            await api(`/api/notifications/${id}/read`, { method: 'POST' });
+                            button.classList.add('read');
+                            await refreshNotificationDot();
+                        } catch {
+                            return;
+                        }
+                    }
+                });
+            });
+        }
+
+        $('#notificationDrawer').classList.remove('hidden');
+        $('#drawerOverlay').classList.remove('hidden');
+    } catch (exception) {
+        $('#notificationList').innerHTML = `<div class="empty">${escapeHtml(exception.message)}</div>`;
+        $('#notificationDrawer').classList.remove('hidden');
+        $('#drawerOverlay').classList.remove('hidden');
+    }
+}
+
+function startRealtimeUpdates() {
+    if (state.notificationTimer) {
+        clearInterval(state.notificationTimer);
+    }
+    state.notificationTimer = window.setInterval(refreshNotificationDot, 30000);
+}
+
 // avisos
 async function notices() {
     const data = await api('/api/contents');
@@ -703,8 +768,7 @@ async function notices() {
 // conteúdo
 async function content() {
     if (state.user.role !== 'admin') return home();
-    await loadUsers();
-    const data = await api('/api/contents');
+    const [_, data] = await Promise.all([loadUsers(), api('/api/contents')]);
 
     $('#content').innerHTML = `
         <div class="page-intro">

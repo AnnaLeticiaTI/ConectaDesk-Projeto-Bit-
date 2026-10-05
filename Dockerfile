@@ -7,4 +7,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "php database/seed.php && php -S 0.0.0.0:8000 router.php"]
+CMD ["sh", "-c", "php database/migrate.php && php database/seed.php && php -S 0.0.0.0:8000 router.php"]

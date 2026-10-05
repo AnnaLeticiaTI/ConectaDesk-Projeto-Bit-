@@ -67,11 +67,11 @@ try {
         }
 
         $stmt = db()->prepare(
-            'SELECT id FROM users
+            "SELECT id FROM users
              WHERE username = :username
                 OR email = :email
-                OR (:secondary_email_check <> "" AND secondary_email = :secondary_email_value)
-             LIMIT 1'
+                OR (:secondary_email_check <> '' AND secondary_email = :secondary_email_value)
+             LIMIT 1"
         );
         $stmt->execute([
             'username' => $username,
@@ -117,6 +117,77 @@ try {
 
     if ($path === '/api/auth/me' && $method === 'GET') {
         json_response(['user' => current_user()]);
+    }
+
+    // arquivos
+    if (preg_match('#^/api/users/(\d+)/avatar$#', $path, $matches) && $method === 'GET') {
+        $viewer = require_auth();
+        $userId = (int)$matches[1];
+        if ($viewer['role'] !== 'admin' && (int)$viewer['id'] !== $userId) {
+            json_response(['error' => 'Acesso restrito.'], 403);
+        }
+
+        $stmt = db()->prepare('SELECT avatar_path, avatar_data, avatar_mime_type FROM users WHERE id = ?');
+        $stmt->execute([$userId]);
+        $avatarData = $stmt->fetch();
+        if (!$avatarData) {
+            json_response(['error' => 'Usuário não encontrado.'], 404);
+        }
+
+        if (!empty($avatarData['avatar_data'])) {
+            header('Content-Type: ' . ($avatarData['avatar_mime_type'] ?: 'application/octet-stream'));
+            header('Cache-Control: private, max-age=300');
+            echo $avatarData['avatar_data'];
+            exit;
+        }
+
+        $legacyPath = __DIR__ . '/../' . ltrim((string)$avatarData['avatar_path'], '/');
+        if (is_file($legacyPath)) {
+            header('Content-Type: ' . (mime_content_type($legacyPath) ?: 'application/octet-stream'));
+            readfile($legacyPath);
+            exit;
+        }
+
+        json_response(['error' => 'Imagem não encontrada.'], 404);
+    }
+
+    if (preg_match('#^/api/tickets/attachments/(\d+)$#', $path, $matches) && $method === 'GET') {
+        $viewer = require_auth();
+        $attachmentId = (int)$matches[1];
+        $stmt = db()->prepare(
+            'SELECT ta.file_path, ta.mime_type, t.requester_id, ta.user_id
+             FROM ticket_attachments ta
+             INNER JOIN tickets t ON t.id = ta.ticket_id
+             WHERE ta.id = ?'
+        );
+        $stmt->execute([$attachmentId]);
+        $attachment = $stmt->fetch();
+        if (!$attachment) {
+            json_response(['error' => 'Imagem não encontrada.'], 404);
+        }
+
+        if ($viewer['role'] !== 'admin' && (int)$attachment['requester_id'] !== (int)$viewer['id']) {
+            json_response(['error' => 'Acesso restrito.'], 403);
+        }
+
+        $stmt = db()->prepare('SELECT file_data, mime_type, file_path FROM ticket_attachments WHERE id = ?');
+        $stmt->execute([$attachmentId]);
+        $file = $stmt->fetch();
+        if (!empty($file['file_data'])) {
+            header('Content-Type: ' . ($file['mime_type'] ?: 'application/octet-stream'));
+            header('Cache-Control: private, max-age=300');
+            echo $file['file_data'];
+            exit;
+        }
+
+        $legacyPath = __DIR__ . '/../' . ltrim((string)$file['file_path'], '/');
+        if (is_file($legacyPath)) {
+            header('Content-Type: ' . (mime_content_type($legacyPath) ?: 'application/octet-stream'));
+            readfile($legacyPath);
+            exit;
+        }
+
+        json_response(['error' => 'Imagem não encontrada.'], 404);
     }
 
     // categorias e usuários
@@ -172,10 +243,10 @@ try {
         }
 
         $stmt = db()->prepare(
-            'SELECT id FROM users
+            "SELECT id FROM users
              WHERE id <> :id
-               AND (email = :email_check OR (:secondary_email_check <> "" AND secondary_email = :secondary_email_value))
-             LIMIT 1'
+               AND (email = :email_check OR (:secondary_email_check <> '' AND secondary_email = :secondary_email_value))
+             LIMIT 1"
         );
         $stmt->execute([
             'id' => (int)$user['id'],
@@ -213,7 +284,14 @@ try {
             json_response(['error' => 'Selecione uma imagem.'], 422);
         }
 
-        db()->prepare('UPDATE users SET avatar_path = ? WHERE id = ?')->execute([$file['path'], (int)$user['id']]);
+        db()->prepare(
+            'UPDATE users SET avatar_path = ?, avatar_data = ?, avatar_mime_type = ? WHERE id = ?'
+        )->execute([
+            'api/users/avatar/' . (int)$user['id'],
+            $file['data'],
+            $file['mime_type'],
+            (int)$user['id'],
+        ]);
         $stmt = db()->prepare('SELECT * FROM users WHERE id = ?');
         $stmt->execute([(int)$user['id']]);
         json_response(['user' => public_user($stmt->fetch())]);
@@ -290,9 +368,12 @@ try {
                 $file = upload_image($_FILES['attachment']);
                 if ($file) {
                     $pdo->prepare(
-                        'INSERT INTO ticket_attachments (ticket_id, user_id, file_path, original_name, mime_type, created_at)
-                         VALUES (?, ?, ?, ?, ?, ?)'
-                    )->execute([$ticketId, (int)$user['id'], $file['path'], $file['original_name'], $file['mime_type'], now()]);
+                        'INSERT INTO ticket_attachments (ticket_id, user_id, file_path, original_name, mime_type, file_data, created_at)
+                         VALUES (?, ?, ?, ?, ?, ?, ?)'
+                    )->execute([$ticketId, (int)$user['id'], 'api/tickets/attachments/pending', $file['original_name'], $file['mime_type'], $file['data'], now()]);
+                    $attachmentId = (int)$pdo->lastInsertId();
+                    $pdo->prepare('UPDATE ticket_attachments SET file_path = ? WHERE id = ?')
+                        ->execute(['api/tickets/attachments/' . $attachmentId, $attachmentId]);
                 }
             }
 
@@ -459,9 +540,12 @@ try {
             $file = upload_image($_FILES['attachment']);
             if ($file) {
                 $pdo->prepare(
-                    'INSERT INTO ticket_attachments (ticket_id, user_id, file_path, original_name, mime_type, created_at)
-                     VALUES (?, ?, ?, ?, ?, ?)'
-                )->execute([$ticketId, (int)$user['id'], $file['path'], $file['original_name'], $file['mime_type'], now()]);
+                    'INSERT INTO ticket_attachments (ticket_id, user_id, file_path, original_name, mime_type, file_data, created_at)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)'
+                )->execute([$ticketId, (int)$user['id'], 'api/tickets/attachments/pending', $file['original_name'], $file['mime_type'], $file['data'], now()]);
+                $attachmentId = (int)$pdo->lastInsertId();
+                $pdo->prepare('UPDATE ticket_attachments SET file_path = ? WHERE id = ?')
+                    ->execute(['api/tickets/attachments/' . $attachmentId, $attachmentId]);
             }
         }
 
@@ -516,13 +600,19 @@ try {
         require_admin();
         $pdo = db();
 
-        $total = (int)$pdo->query('SELECT COUNT(*) FROM tickets')->fetchColumn();
-        $status = [];
-        foreach (['Aberto', 'Em Atendimento', 'Concluído'] as $item) {
-            $stmt = $pdo->prepare('SELECT COUNT(*) FROM tickets WHERE status = ?');
-            $stmt->execute([$item]);
-            $status[$item] = (int)$stmt->fetchColumn();
-        }
+        $summary = $pdo->query(
+            "SELECT COUNT(*) AS total,
+                    COALESCE(SUM(status = 'Aberto'), 0) AS open_total,
+                    COALESCE(SUM(status = 'Em Atendimento'), 0) AS working_total,
+                    COALESCE(SUM(status = 'Concluído'), 0) AS done_total
+             FROM tickets"
+        )->fetch();
+        $total = (int)$summary['total'];
+        $status = [
+            'Aberto' => (int)$summary['open_total'],
+            'Em Atendimento' => (int)$summary['working_total'],
+            'Concluído' => (int)$summary['done_total'],
+        ];
 
         $categories = $pdo->query(
             'SELECT c.id, c.name, c.severity, COUNT(t.id) AS total
@@ -550,13 +640,19 @@ try {
              ORDER BY day'
         )->fetchAll();
 
-        $averageRating = (float)$pdo->query('SELECT COALESCE(AVG(rating), 0) FROM ticket_ratings')->fetchColumn();
-        $content = $pdo->query(
-            'SELECT COUNT(*) AS deliveries,
-                    COALESCE(SUM(opened), 0) AS opened,
-                    COALESCE(SUM(liked), 0) AS liked
-             FROM content_recipients'
+        $engagement = $pdo->query(
+            'SELECT
+                (SELECT COALESCE(AVG(rating), 0) FROM ticket_ratings) AS average_rating,
+                (SELECT COUNT(*) FROM content_recipients) AS deliveries,
+                (SELECT COALESCE(SUM(opened), 0) FROM content_recipients) AS opened,
+                (SELECT COALESCE(SUM(liked), 0) FROM content_recipients) AS liked'
         )->fetch();
+        $averageRating = (float)$engagement['average_rating'];
+        $content = [
+            'deliveries' => (int)$engagement['deliveries'],
+            'opened' => (int)$engagement['opened'],
+            'liked' => (int)$engagement['liked'],
+        ];
 
         json_response([
             'total' => $total,
