@@ -86,6 +86,7 @@ async function api(url, options = {}) {
     const method = String(options.method || 'GET').toUpperCase();
     const useCache = method === 'GET' && options.cache !== false;
     const cacheKey = url;
+    const { cache: appCacheOption, ...requestOptions } = options;
 
     if (useCache) {
         const cached = apiCache.get(cacheKey);
@@ -104,7 +105,11 @@ async function api(url, options = {}) {
 
         let response;
         try {
-            response = await fetch(url, { ...options, headers });
+            response = await fetch(url, {
+                ...requestOptions,
+                headers,
+                cache: appCacheOption === false ? 'no-store' : 'default',
+            });
         } catch {
             throw new Error('Não foi possível conectar ao ConectaDesk. Verifique se o servidor está em execução.');
         }
