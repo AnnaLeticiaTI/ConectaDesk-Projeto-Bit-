@@ -972,21 +972,19 @@ try {
         $pdo = db();
 
         $ratings = $pdo->query(
-            "SELECT u.name,
-                    (SELECT COUNT(DISTINCT cr.content_id)
-                     FROM content_recipients cr
-                     INNER JOIN contents c ON c.id = cr.content_id
-                     WHERE cr.user_id = u.id
-                       AND c.type = 'material'
-                       AND cr.liked = 1) AS evaluations,
-                    (SELECT COUNT(DISTINCT cr.content_id)
-                     FROM content_recipients cr
-                     INNER JOIN contents c ON c.id = cr.content_id
-                     WHERE cr.user_id = u.id
-                       AND c.type = 'material') AS materials_received
+            'SELECT u.name,
+                    COUNT(DISTINCT CASE
+                        WHEN c.type = \'material\' AND cr.liked = 1 THEN cr.content_id
+                    END) AS evaluations,
+                    COUNT(DISTINCT CASE
+                        WHEN c.type = \'material\' THEN cr.content_id
+                    END) AS materials_received
              FROM users u
-             WHERE u.role = 'user'
-             ORDER BY u.name"
+             LEFT JOIN content_recipients cr ON cr.user_id = u.id
+             LEFT JOIN contents c ON c.id = cr.content_id
+             WHERE u.role = \'user\'
+             GROUP BY u.id, u.name
+             ORDER BY u.name'
         )->fetchAll();
 
         foreach ($ratings as &$item) {

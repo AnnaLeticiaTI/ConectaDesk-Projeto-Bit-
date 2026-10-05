@@ -38,11 +38,11 @@ O fluxo dos chamados é `Aberto`, `Em Atendimento` e `Concluído`. A alteração
 
 Os comentários dos materiais ficam visíveis para os usuários que têm acesso ao conteúdo, incluindo administradores.
 
-O Dashboard possui exportação em PDF e Excel com os mesmos blocos de informações apresentados na tela.
+O Dashboard possui exportação em PDF e Excel com os mesmos blocos de informações apresentados na tela. Nos relatórios, a lista de satisfação considera somente usuários comuns e mostra também as curtidas em materiais de apoio, com atualização automática enquanto a área permanece aberta.
 
 ## Decisões
 
-Mantive uma estrutura simples para deixar o projeto funcional, organizado e fácil de executar. Também priorizei correções na origem dos problemas, sem criar regras paralelas para esconder erros.
+Mantive uma estrutura simples para deixar o projeto funcional, organizado e fácil de executar. Também priorizei correções na origem dos problemas, sem criar regras paralelas para esconder erros. Para reduzir a espera entre abas, o frontend reaproveita respostas GET recentes e evita requisições duplicadas; alterações invalidam esse cache. A área de relatórios faz atualização automática para refletir novas curtidas sem recarregar a página.
 
 ## Melhorias futuras
 

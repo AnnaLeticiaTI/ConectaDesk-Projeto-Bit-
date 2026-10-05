@@ -121,8 +121,20 @@ try {
         ['/api/tickets', 'chamados'],
         ['/api/notifications', 'notificações'],
     ] as [$path, $name]) {
-        [$status] = request('GET', $path);
+        [$status, $body] = request('GET', $path);
         assert_status($name, 200, $status);
+        if ($path === '/api/reports') {
+            $report = json_body($body);
+            foreach (($report['ratings'] ?? []) as $rating) {
+                if (stripos((string)($rating['name'] ?? ''), 'Administrador Principal') !== false) {
+                    throw new RuntimeException('O administrador não deve aparecer nas avaliações por usuário.');
+                }
+                if (!array_key_exists('materials_received', $rating)) {
+                    throw new RuntimeException('O relatório não retornou a quantidade de materiais recebidos.');
+                }
+            }
+            echo "PASS: relatório de satisfação sem administrador e com curtidas e materiais recebidos\n";
+        }
     }
 
     [$status, $body] = request('POST', '/api/tickets', [
